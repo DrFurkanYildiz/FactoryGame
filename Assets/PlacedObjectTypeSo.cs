@@ -17,6 +17,8 @@ public class PlacedObjectTypeSo : ScriptableObject
     
     public Transform prefab;
     public Transform visual;
+    public Transform curvePrefab;
+    public Transform curveVisual;
     [Range(1, 10)] public int height = 1;
     [Range(1, 10)] public int width = 1;
     
@@ -192,7 +194,7 @@ public class PlacedObjectTypeSoEditor : Editor
         height = serializedObject.FindProperty("height");
         width = serializedObject.FindProperty("width");
         prefab = serializedObject.FindProperty("prefab");
-        visual= serializedObject.FindProperty("visual");
+        visual = serializedObject.FindProperty("visual");
 
         isMachine = serializedObject.FindProperty("isMachine");
         itemRecipeSo = serializedObject.FindProperty("itemRecipeSo");
@@ -216,6 +218,7 @@ public class PlacedObjectTypeSoEditor : Editor
         EditorGUILayout.PropertyField(width);
         EditorGUILayout.PropertyField(prefab);
         EditorGUILayout.PropertyField(visual);
+
 
         EditorGUILayout.PropertyField(isMachine);
         if (isMachine.boolValue) EditorGUILayout.PropertyField(itemRecipeSo);

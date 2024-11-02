@@ -1,4 +1,5 @@
 using DG.Tweening;
+using GridSystem;
 using UnityEngine;
 
 public class Item : MonoBehaviour
@@ -25,7 +26,7 @@ public class Item : MonoBehaviour
     {
         _hasAlreadyMoved = true;
         var position = _grid.GetWorldPosition(inputGate) + new Vector3(0.5f, 0, 0.5f);
-        transform.DOMove(position, .25f).OnComplete(() => _hasAlreadyMoved = false);
+        transform.DOMove(position, .1f).OnComplete(() => _hasAlreadyMoved = false);
     }
 
     public ItemSo GetItemSo()

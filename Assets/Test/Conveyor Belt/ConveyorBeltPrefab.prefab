@@ -30,7 +30,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2772905497752100749}
+  - {fileID: 8757055970309522383}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1477867808212649493
@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac7fd2b07bf052e47941b5be37b849fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1001 &489630208843588066
+--- !u!1001 &6428750811900329376
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -93,22 +93,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 2574646255082208495, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2574646255082208495, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2574646255082208495, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 2574646255082208495, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.5
-      objectReference: {fileID: 0}
     - target: {fileID: 7065672751465146000, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
       propertyPath: m_Name
       value: ConveyorBeltVisual
@@ -118,8 +102,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
---- !u!4 &2772905497752100749 stripped
+--- !u!4 &8757055970309522383 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2355614393633472111, guid: 4405d58a0280ed04e913cae8d3997c48, type: 3}
-  m_PrefabInstance: {fileID: 489630208843588066}
+  m_PrefabInstance: {fileID: 6428750811900329376}
   m_PrefabAsset: {fileID: 0}

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using GridSystem;
 using UnityEngine;
 
 public class Storage : PlacedObject, IItemSlot

@@ -1,11 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using GridSystem;
 using UnityEngine;
 
 public abstract class PlacedObject : MonoBehaviour
 {
     public static PlacedObject Create(Grid<Tile> grid, Vector3 worldPosition, Vector2Int origin, Dir dir, PlacedObjectTypeSo placedObjectTypeSo) {
-        var placedObjectTransform = Instantiate(placedObjectTypeSo.prefab, worldPosition, Quaternion.Euler(0, PlacedObjectTypeSo.GetRotationAngle(dir), 0));
+        var placedObjectTransform = 
+            Instantiate(placedObjectTypeSo.prefab, worldPosition, Quaternion.Euler(0, PlacedObjectTypeSo.GetRotationAngle(dir), 0));
         var placedObject = placedObjectTransform.GetComponent<PlacedObject>();
 
         placedObject.Grid = grid;

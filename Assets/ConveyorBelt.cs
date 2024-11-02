@@ -4,10 +4,9 @@ using UnityEngine;
 
 public class ConveyorBelt : PlacedObject, IItemSlot
 {
-    
     private Vector2Int _previousPosition;
     private Vector2Int _gridPosition;
-    private Vector2Int _nextPosition;
+    public Vector2Int NextPosition { get; private set; }
 
     private Item _item;
     
@@ -16,7 +15,7 @@ public class ConveyorBelt : PlacedObject, IItemSlot
         _gridPosition = Origin;
 
         _previousPosition = Origin + PlacedObjectTypeSo.GetDirForwardVector(Dir) * -1;
-        _nextPosition = Origin + PlacedObjectTypeSo.GetDirForwardVector(Dir);
+        NextPosition = Origin + PlacedObjectTypeSo.GetDirForwardVector(Dir);
     }
 
     private void Update()
@@ -34,16 +33,16 @@ public class ConveyorBelt : PlacedObject, IItemSlot
     private void TakeAction() 
     {
         if (_item == null || !_item.CanMove) return;
-        var nextPlacedObject = Grid.GetGridObject(_nextPosition).OwnedObject;
+        var nextPlacedObject = Grid.GetGridObject(NextPosition).OwnedObject;
         if (nextPlacedObject == null) return;
             
         if (nextPlacedObject is not IItemSlot nextPlacedSlot || !nextPlacedSlot.CanCarryItem(_item.GetItemSo())) return;
-        if (nextPlacedSlot.GetGridPosition().All(p => p != _nextPosition)) return;
+        if (nextPlacedSlot.GetGridPosition().All(p => p != NextPosition)) return;
 
         if (nextPlacedSlot.TrySetWorldItem(_item))
         {
             _item.MoveToItemSlot
-                (nextPlacedSlot.GetGridPosition().FirstOrDefault(p => p == _nextPosition));
+                (nextPlacedSlot.GetGridPosition().FirstOrDefault(p => p == NextPosition));
             _item = null;
             
             Debug.Log("Take Action!");

@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using DG.Tweening;
+using GridSystem;
 using UnityEngine;
 
 public class GridBuildingSystem : MonoBehaviour
@@ -22,18 +24,8 @@ public class GridBuildingSystem : MonoBehaviour
 
 
     private PathfindingSystem<Tile> _pathfindingSystem;
-    private bool _isConveyorBeltSelected;
-    private Vector2Int _firstConveyorBeltCoordinate;
-    private Vector2Int _lastConveyorBeltCoordinate;
-    private bool _isFirstConveyorBeltCoordinateSelected;
-    
-    private bool _isFirstBeltPlaced;
-    private PlacedObject _firstPlacedBelt;
-    private List<Transform> _beltVisualList = new List<Transform>();
-    [SerializeField] private List<Vector3> _beltPathPositionList = new List<Vector3>();
-    private Vector2Int _lastMouseGridPosition;
 
-    public Action<PlacedObjectType> OnSelectedPlacedObject;
+    private Action<PlacedObjectType> _onSelectedPlacedObject;
 
     private void Awake()
     {
@@ -41,7 +33,7 @@ public class GridBuildingSystem : MonoBehaviour
         _grid = InitializeGrid(20, 20, 1f);
         _pathfindingSystem = new PathfindingSystem<Tile>(_grid);
 
-        OnSelectedPlacedObject += SelectObject;
+        _onSelectedPlacedObject += SelectObject;
     }
     private static Grid<Tile> InitializeGrid(int width, int height, float cellSize)
     {
@@ -49,102 +41,14 @@ public class GridBuildingSystem : MonoBehaviour
             (Grid<Tile> g, int x, int y) => new Tile(g, x, y));
     }
 
-    private void Start()
-    {
-        
-        var conveyorSplitter = PlacedObject.Create(_grid, Vector3.zero, Vector2Int.zero, _dir,
-            GetPlacedSo(PlacedObjectType.ConveyorSplitter));
-    }
 
     private void Update()
     {
         HandleSelectObject();
         HandleRotateObject();
         HandleDemolish();
-            
-        if (_isFirstConveyorBeltCoordinateSelected)
-        {
-            var mousePosition = Mouse3D.GetMouseWorldPosition();
-            _grid.GetXZ(mousePosition, out var x, out var z);
-            var currentMouseGridPosition = new Vector2Int(x, z);
-
-            // Sadece fare yeni bir hücreye geçtiğinde çalıştır
-            if (currentMouseGridPosition != _lastMouseGridPosition && currentMouseGridPosition != _firstConveyorBeltCoordinate)
-            {
-                _lastMouseGridPosition = currentMouseGridPosition;
-
-                // Görselleri temizle
-                foreach (var beltVisual in _beltVisualList)
-                {
-                    Destroy(beltVisual.gameObject);
-                }
-
-                _beltVisualList.Clear();
-
-                // Yeni yol hesapla
-                _beltPathPositionList = FindBeltPath(_firstConveyorBeltCoordinate, currentMouseGridPosition);
-/*
-                //Sadece 1 tane belt yapılacak
-                if (_beltPathPositionList.Count <= 0)
-                {
-                    // Belt görselini oluştur
-                    var beltVisual = Instantiate(
-                        GetPlacedSo(PlacedObjectType.ConveyorBelt).visual, _grid.GetWorldPosition(_firstConveyorBeltCoordinate),Quaternion.identity);
-                    beltVisual.parent = transform;
-                    _beltVisualList.Add(beltVisual);
-                    return;
-                }
-                */
-                
-                // Yeni yol için görseller oluştur
-                if (_beltPathPositionList.Count > 0)
-                {
-                    
-                    var lastIndex = _beltPathPositionList.Count - 1;
-                    var lastPos = _beltPathPositionList[lastIndex];
-                    _beltPathPositionList.RemoveAt(lastIndex);
-                    _beltPathPositionList.Insert(0, _grid.GetWorldPosition(_firstConveyorBeltCoordinate));
-                    _beltPathPositionList.Add(lastPos);
-                    
-                    for (int i = 0; i < _beltPathPositionList.Count; i++)
-                    {
-                        //Vector3 currentPos = _grid.GetWorldPosition(_beltPathPositionList[i]);
-                        Vector3 currentPos = Vector3.zero;
-                        Quaternion rotation = Quaternion.identity;
-/*
-                        // Eğer bir sonraki pozisyon varsa, yönü belirlemek için kullan
-                        if (i < _beltPathPositionList.Count - 1)
-                        {
-                            Vector3 nextPos = _grid.GetWorldPosition(_beltPathPositionList[i + 1]);
-
-                            
-                            var dir = PlacedObjectTypeSo.GetDir(_grid.GetCoordinate(currentPos),
-                                _grid.GetCoordinate(nextPos));
-
-                            //TODO: Rot Pos tamamne bozuldu.
-                            currentPos = GetMouseWorldSnappedPosition(GetPlacedSo(PlacedObjectType.ConveyorBelt),
-                                _beltPathPositionList[i], _dir);
-                            
-                            rotation = GetPlacedObjectRotation(dir);
-                        }
-                        */
-                        currentPos = GetMouseWorldSnappedPosition(GetPlacedSo(PlacedObjectType.ConveyorBelt),
-                            _beltPathPositionList[i], _dir);
-                            
-                        rotation = GetPlacedObjectRotation(_dir);
-
-                        // Belt görselini oluştur
-                        var beltVisual = Instantiate(
-                            GetPlacedSo(PlacedObjectType.ConveyorBelt).visual, transform);
-                        beltVisual.position = currentPos;
-                        beltVisual.rotation = rotation;
-                        _beltVisualList.Add(beltVisual);
-                    }
-                }
-            }
-        }
-
-
+        
+        
         if (_isFirstConveyorTunnelPlaced)
         {
             var mousePosition = Mouse3D.GetMouseWorldPosition();
@@ -169,43 +73,88 @@ public class GridBuildingSystem : MonoBehaviour
         if (_visual == null) return;
         var targetPosition = GetMouseWorldSnappedPosition();
         targetPosition.y = 0f;
-        _visual.position = Vector3.Lerp(_visual.position, targetPosition, Time.deltaTime * 15f);
-        //_visual.position = targetPosition;
-        _visual.rotation = Quaternion.Lerp(_visual.rotation, GetPlacedObjectRotation(), Time.deltaTime * 15f);
+
+        _visual.position = Vector3.Lerp(_visual.position, targetPosition, Time.deltaTime * 25f);
+        _visual.rotation = Quaternion.Lerp(_visual.rotation, GetPlacedObjectRotation(), Time.deltaTime * 25f);
     }
 
     private void RefreshVisual()
     {
         if (_visual != null) Destroy(_visual.gameObject);
-        if (_placedObjectTypeSo == null || _isFirstBeltPlaced) return;
-        _visual = Instantiate(_placedObjectTypeSo.visual, transform);
-        _visual.SetLocalPositionAndRotation(GetMouseWorldSnappedPosition(), Quaternion.identity);
+        if (_placedObjectTypeSo == null) return;
+        _visual = Instantiate(_placedObjectTypeSo.visual, GetMouseWorldSnappedPosition(), GetPlacedObjectRotation(),
+            transform);
+    }
+
+    private bool _isFlat = true;
+    private void ChangeBeltVisual()
+    {
+       
+        var origin = _grid.GetCoordinate(Mouse3D.GetMouseWorldPosition());
+        var currentTile = _grid.GetGridObject(origin);
+        var currentNext = origin + PlacedObjectTypeSo.GetDirForwardVector(_dir);
+        var currentPre = origin + PlacedObjectTypeSo.GetDirForwardVector(_dir) * -1;
+
+        var neighbour = _pathfindingSystem.GetNeighbour(currentTile, false);
+        ConveyorBelt preBelt = null;
+        var i = 0;
+        foreach (var tile in neighbour)
+        {
+            if (tile.OwnedObject is ConveyorBelt belt &&
+                belt.NextPosition == currentTile.GetGridPosition && currentNext != tile.GetGridPosition &&
+                currentPre != tile.GetGridPosition)
+            {
+                i++;
+                preBelt = belt;
+            }
+        }
+
+        if (i == 1)
+        {
+            Debug.Log(_dir + "Dön"  + preBelt.Dir);
+            /*
+            _isFlat = !_isFlat;
+            _visual.GetChild(0).gameObject.SetActive(_isFlat);
+            _visual.GetChild(1).gameObject.SetActive(!_isFlat);
+            _visual.GetChild(1).GetChild(_dir == Dir.Left ? 0 : 1).gameObject.SetActive(true);
+            */
+        }
+        else
+        {
+            //if (_isFlat) return;
+            Debug.Log("Düz ol!");
+            
+            /*
+            _isFlat = !_isFlat;
+            
+            _visual.GetChild(0).gameObject.SetActive(_isFlat);
+            _visual.GetChild(1).gameObject.SetActive(!_isFlat);
+            
+            _visual.GetChild(1).GetChild(0).gameObject.SetActive(false);
+            _visual.GetChild(1).GetChild(1).gameObject.SetActive(false);
+           */
+        }
+        
     }
 
     private void HandleSelectObject()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1)) OnSelectedPlacedObject?.Invoke(PlacedObjectType.Storage);
-        if (Input.GetKeyDown(KeyCode.Alpha2)) OnSelectedPlacedObject?.Invoke(PlacedObjectType.ConveyorBelt);
-        if (Input.GetKeyDown(KeyCode.Alpha3)) OnSelectedPlacedObject?.Invoke(PlacedObjectType.ConveyorSplitter);
-        if (Input.GetKeyDown(KeyCode.Alpha4)) OnSelectedPlacedObject?.Invoke(PlacedObjectType.Machine1);
-        if (Input.GetKeyDown(KeyCode.Alpha5)) OnSelectedPlacedObject?.Invoke(PlacedObjectType.ConveyorTunnel);
-        if (Input.GetKeyDown(KeyCode.Alpha6)) OnSelectedPlacedObject?.Invoke(PlacedObjectType.Test);
+        if (Input.GetKeyDown(KeyCode.Alpha1)) _onSelectedPlacedObject?.Invoke(PlacedObjectType.Storage);
+        if (Input.GetKeyDown(KeyCode.Alpha2)) _onSelectedPlacedObject?.Invoke(PlacedObjectType.ConveyorBelt);
+        if (Input.GetKeyDown(KeyCode.Alpha3)) _onSelectedPlacedObject?.Invoke(PlacedObjectType.ConveyorSplitter);
+        if (Input.GetKeyDown(KeyCode.Alpha4)) _onSelectedPlacedObject?.Invoke(PlacedObjectType.Machine1);
+        if (Input.GetKeyDown(KeyCode.Alpha5)) _onSelectedPlacedObject?.Invoke(PlacedObjectType.ConveyorTunnel);
+        if (Input.GetKeyDown(KeyCode.Alpha6)) _onSelectedPlacedObject?.Invoke(PlacedObjectType.Test);
         
         
         //TODO: Deselect ve Demolish refaktör edilecek.
-        if (!isDemolishActive && Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1))
         {
             DeselectObjectType();
             if (_isFirstConveyorTunnelPlaced)
             {
                 _isFirstConveyorTunnelPlaced = false;
                 _firstPlacedTunnel.DestroySelf();
-            }
-
-            if (_isFirstBeltPlaced)
-            {
-                _firstPlacedBelt.DestroySelf();
-                ConveyorBeltsPathClear();
             }
         }
     }
@@ -214,7 +163,6 @@ public class GridBuildingSystem : MonoBehaviour
     private void SelectObject(PlacedObjectType placedObjectType)
     {
         _placedObjectTypeSo = GetPlacedSo(placedObjectType);
-        _isConveyorBeltSelected = placedObjectType == PlacedObjectType.ConveyorBelt;
         RefreshVisual();
     }
     
@@ -226,7 +174,14 @@ public class GridBuildingSystem : MonoBehaviour
     private void HandleRotateObject()
     {
         if (Input.GetKeyDown(KeyCode.R))
+        {
             _dir = PlacedObjectTypeSo.GetNextDir(_dir);
+            
+            
+            if (_placedObjectTypeSo.type is PlacedObjectType.ConveyorBelt)
+                ChangeBeltVisual();
+
+        }
     }
 
     private void HandlePlacement()
@@ -237,59 +192,19 @@ public class GridBuildingSystem : MonoBehaviour
             {
                 var mousePosition = Mouse3D.GetMouseWorldPosition();
                 ObjectPlacement(_grid, _placedObjectTypeSo, mousePosition, _dir, out var placedObject);
-                /*
-                 if (_isConveyorBeltSelected)
-                 {
-                     _firstConveyorBeltCoordinate = _grid.GetCoordinate(mousePosition);
-                     _isFirstConveyorBeltCoordinateSelected = true;
 
 
-                     // Belt görselini oluştur
-                     var beltVisual = Instantiate(
-                         GetPlacedSo(PlacedObjectType.ConveyorBelt).visual, transform);
-                     beltVisual.position = GetMouseWorldSnappedPosition();
-                     beltVisual.rotation = GetPlacedObjectRotation();
-                     Debug.Log("ilk belt görseli oluşturuldu! "+_grid.GetWorldPosition(_firstConveyorBeltCoordinate));
-                     _beltVisualList.Add(beltVisual);
-
-                     DeselectObjectType();
-                     return;
-                 }
-
-                 ObjectPlacement(_grid, _placedObjectTypeSo, mousePosition, _dir, out var placedObject);
-
-                 if (placedObject == null) return;
-
-                 if (placedObject is ConveyorTunnel)
-                 {
-                     ConveyorTunnelAssignment(placedObject);
-                     return;
-                 }
-
-                 if (placedObject is not BeltTest)
-                     DeselectObjectType();
-                     */
+                if (placedObject is ConveyorTunnel)
+                {
+                    ConveyorTunnelAssignment(placedObject);
+                }
             }
-            
-            /*
-            else
-            {
-                if (!_isFirstBeltPlaced) return;
-                
-                foreach (var pos in _beltPathPositionList)
-                    ObjectPlacement(_grid, GetPlacedSo(PlacedObjectType.ConveyorBelt), pos, _dir, out var placedObject);
-
-                ConveyorBeltsPathClear();
-                DeselectObjectType();
-            }
-            
-            */
         }
     }
 
     private void HandleDemolish()
     {
-        if (isDemolishActive && Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1))
         {
             var placedObject = _grid.GetGridObject(Mouse3D.GetMouseWorldPosition()).OwnedObject;
             if (placedObject == null) return;
@@ -368,18 +283,6 @@ public class GridBuildingSystem : MonoBehaviour
         var path = _pathfindingSystem.FindPath(_grid.GetWorldPosition(start), _grid.GetWorldPosition(end), false);
         if (path == null) Debug.Log("Path not found!");//Debug.DrawLine(path[i], path[i + 1], Color.red, 1f);
         return path;
-    }
-    
-    private void ConveyorBeltsPathClear()
-    {
-        _isFirstBeltPlaced = false;
-        _firstPlacedBelt = null;
-
-        foreach (var beltVisual in _beltVisualList)
-            Destroy(beltVisual.gameObject);
-        
-        _beltVisualList.Clear();
-        _beltPathPositionList.Clear();
     }
     private void ConveyorTunnelAssignment(PlacedObject placedObject)
     {
