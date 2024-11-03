@@ -27,9 +27,9 @@ public class Storage : PlaceableObjectBase, IItemSlot
         _gatePosition = positionList[(positionList.Count - 1) / 2] + 
                PlaceableObjectSo.GetDirForwardVector(Dir);
 
-        _gateNeighbourTile = Grid.GetGridObject(_gatePosition + PlaceableObjectSo.GetDirForwardVector(Dir));
+        _gateNeighbourTile = Grid.GetGridObject(_gatePosition + PlaceableObjectBaseSo.GetDirForwardVector(Dir));
 
-        _itemSo = GameAssets.i.GetItemSo(ItemType.A);
+        _itemSo = GameAssets.i.GetItemSo(ItemType.C);
         _debugSpawnItemCount = 60;
     }
 
@@ -58,8 +58,7 @@ public class Storage : PlaceableObjectBase, IItemSlot
         if (_gateItem != null && _gateItem.CanMove)
         {
             if (!itemSlotObj.TrySetWorldItem(_gateItem)) return;
-            _gateItem.MoveToItemSlot(
-                itemSlotObj.GetGridPosition().FirstOrDefault(p => p == _gateNeighbourTile.GetGridPosition));
+            _gateItem.MoveToItemSlot(itemSlotObj.GetCarryItemWorldPosition(_gateItem));
             _gateItem = null;
             _debugSpawnItemCount--;
         }
@@ -94,5 +93,10 @@ public class Storage : PlaceableObjectBase, IItemSlot
     public IEnumerable<Vector2Int> GetGridPosition()
     {
         return new[] { _gatePosition };
+    }
+
+    public Vector3 GetCarryItemWorldPosition(Item item)
+    {
+        return Grid.GetWorldPosition(_gatePosition) + Grid.GetCellSizeOffset();
     }
 }

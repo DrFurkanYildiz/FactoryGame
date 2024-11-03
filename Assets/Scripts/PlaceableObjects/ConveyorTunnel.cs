@@ -48,8 +48,7 @@ public class ConveyorTunnel : PlaceableObjectBase, IItemSlot
 
             if (nextPlacedSlot.TrySetWorldItem(_item))
             {
-                _item.MoveToItemSlot
-                    (nextPlacedSlot.GetGridPosition().FirstOrDefault(p => p == _nextPosition));
+                _item.MoveToItemSlot(nextPlacedSlot.GetCarryItemWorldPosition(_item));
                 _item = null;
             
                 Debug.Log("Take Action!");
@@ -75,5 +74,10 @@ public class ConveyorTunnel : PlaceableObjectBase, IItemSlot
     public IEnumerable<Vector2Int> GetGridPosition()
     {
         return new[] { Origin };
+    }
+
+    public Vector3 GetCarryItemWorldPosition(Item item)
+    {
+        return Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
     }
 }

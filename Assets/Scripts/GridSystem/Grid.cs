@@ -130,6 +130,11 @@ namespace GridSystem
             return GetGridObject(coordinate.x, coordinate.y);
         }
 
+        public Vector3 GetCellSizeOffset()
+        {
+            return new Vector3(_cellSize / 2f, 0f, _cellSize / 2f);
+        }
+
         public Vector2Int ValidateGridPosition(Vector2Int gridPosition) {
             return new Vector2Int(
                 Mathf.Clamp(gridPosition.x, 0, _width - 1),

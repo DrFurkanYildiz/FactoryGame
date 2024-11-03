@@ -108,6 +108,11 @@ public class Machine : PlaceableObjectBase, IItemSlot
         return _inputGates.ToArray();
     }
 
+    public Vector3 GetCarryItemWorldPosition(Item item)
+    {
+        return Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
+    }
+
     private bool HasEnoughItemsToCraft()
     {
         return _recipeInputs.TrueForAll(recipeInput => _inputStacks[recipeInput.item] >= recipeInput.amount);
@@ -159,7 +164,7 @@ public class Machine : PlaceableObjectBase, IItemSlot
             {
                 // Başarıyla aktarılırsa öğeyi taşı ve stoktan düş
                 Debug.Log($"{outputItem.name} öğesi başarıyla çıkış kapısına aktarıldı.");
-                itemInstance.MoveToItemSlot(outputPosition);
+                itemInstance.MoveToItemSlot(itemSlotObj.GetCarryItemWorldPosition(itemInstance));
                 _outputStacks[outputItem]--;
                 Debug.Log($"{outputItem.name} öğesi stoktan düşüldü. Kalan miktar: {_outputStacks[outputItem]}");
             }

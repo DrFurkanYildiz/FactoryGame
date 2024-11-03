@@ -17,4 +17,9 @@ public class BeltTest: PlaceableObjectBase, IItemSlot
     {
         return new[] { Origin };
     }
+
+    public Vector3 GetCarryItemWorldPosition(Item item)
+    {
+        throw new System.NotImplementedException();
+    }
 }

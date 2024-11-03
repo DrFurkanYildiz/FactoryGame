@@ -5,4 +5,5 @@ public interface IItemSlot
     bool CanCarryItem(ItemSo itemSo);
     bool TrySetWorldItem(Item item);
     IEnumerable<Vector2Int> GetGridPosition();
+    Vector3 GetCarryItemWorldPosition(Item item);
 }

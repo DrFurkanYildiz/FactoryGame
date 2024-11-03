@@ -12,5 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fed554752cbf5324f86b246c89686051, type: 3}
   m_Name: Test Item 1
   m_EditorClassIdentifier: 
+  type: 1
   prefab: {fileID: 8545614155434382028, guid: fd0cfa86adda2a1409051cd54b33bbd2, type: 3}
   isSolidItem: 1

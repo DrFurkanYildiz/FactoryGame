@@ -20,13 +20,16 @@ public class Item : MonoBehaviour
     private bool _hasAlreadyMoved;
     private ItemSo _itemSo;
     public bool CanMove => !_hasAlreadyMoved;
+    public Vector3 target;
     
 
-    public void MoveToItemSlot(Vector2Int inputGate)
+    public void MoveToItemSlot(Vector3 position)
     {
         _hasAlreadyMoved = true;
-        var position = _grid.GetWorldPosition(inputGate) + new Vector3(0.5f, 0, 0.5f);
-        transform.DOMove(position, .1f).OnComplete(() => _hasAlreadyMoved = false);
+        target = position;
+        //var position = _grid.GetWorldPosition(inputGate) + new Vector3(0.5f, 0, 0.5f);
+        //var position = _grid.GetWorldPosition(inputGate);
+        transform.DOLocalMove(position, .5f).OnComplete(() => _hasAlreadyMoved = false);
     }
 
     public ItemSo GetItemSo()

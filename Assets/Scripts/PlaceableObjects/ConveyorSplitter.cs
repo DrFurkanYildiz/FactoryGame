@@ -56,8 +56,7 @@ public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
                 nextSlot.TrySetWorldItem(_item) &&
                 nextSlot.CanCarryItem(_item.GetItemSo()))
             {
-                _item.MoveToItemSlot
-                    (nextSlot.GetGridPosition().FirstOrDefault(p=> p == tile.GetGridPosition));
+                _item.MoveToItemSlot(nextSlot.GetCarryItemWorldPosition(_item));
                 _item = null;
                 _currentGateIndex = (_currentGateIndex + 1) % _gatesTiles.Count;
                 break;
@@ -81,5 +80,10 @@ public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
     public IEnumerable<Vector2Int> GetGridPosition()
     {
         return new[] { _previousPosition };
+    }
+
+    public Vector3 GetCarryItemWorldPosition(Item item)
+    {
+        return Grid.GetWorldPosition(_previousPosition) + Grid.GetCellSizeOffset();
     }
 }
