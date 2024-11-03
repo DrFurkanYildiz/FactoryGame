@@ -11,16 +11,16 @@ namespace GridSystem
         public int hCost { get; set; }
         public int fCost { get; private set; }
 
-        public bool canBuild => _ownedObject == null;
+        public bool canBuild => _ownedObjectBase == null;
         public IPathNode cameFromNode { get; set; }
     
-        private PlacedObject _ownedObject;
-        public PlacedObject OwnedObject
+        private PlaceableObjectBase _ownedObjectBase;
+        public PlaceableObjectBase OwnedObjectBase
         {
-            get => _ownedObject;
+            get => _ownedObjectBase;
             set
             {
-                _ownedObject = value;
+                _ownedObjectBase = value;
                 TriggerGridObjectChanged();
             }
         }
@@ -30,15 +30,15 @@ namespace GridSystem
             Grid = grid;
             this.x = x;
             this.y = y;
-            _ownedObject = null;
+            _ownedObjectBase = null;
         }
 
         public override string ToString() {
-            return x + ", " + y + "\n" + _ownedObject;
+            return x + ", " + y + "\n" + _ownedObjectBase;
         }
 
         private void TriggerGridObjectChanged() => Grid.TriggerGridObjectChanged(x, y);
-        public void ClearPlacedObject() => OwnedObject = null;
+        public void ClearPlacedObject() => OwnedObjectBase = null;
         public void CalculateFCost()
         {
             fCost = gCost + hCost;

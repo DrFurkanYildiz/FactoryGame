@@ -41,7 +41,7 @@ namespace GridSystem
                 {
                     for (int z = 0; z < _gridArray.GetLength(1); z++)
                     {
-                        debugTextArray[x, z] = Helpers.CreateWorldTextPro(GameObject.Find("DebugText").transform, _gridArray[x, z]?.ToString(), GetWorldPosition(x, z) + new Vector3(cellSize, 0, cellSize) * .5f, .5f, Color.black);
+                        debugTextArray[x, z] = Helpers.Helpers.CreateWorldTextPro(GameObject.Find("DebugText").transform, _gridArray[x, z]?.ToString(), GetWorldPosition(x, z) + new Vector3(cellSize, 0, cellSize) * .5f, .5f, Color.black);
 
                         Debug.DrawLine(GetWorldPosition(x, z), GetWorldPosition(x, z + 1), Color.white, 100f);
                         Debug.DrawLine(GetWorldPosition(x, z), GetWorldPosition(x + 1, z), Color.white, 100f);

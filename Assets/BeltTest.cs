@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BeltTest: PlacedObject, IItemSlot
+public class BeltTest: PlaceableObjectBase, IItemSlot
 {
     public bool CanCarryItem(ItemSo itemSo)
     {
