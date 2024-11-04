@@ -86,4 +86,19 @@ public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
     {
         return Grid.GetWorldPosition(_previousPosition) + Grid.GetCellSizeOffset();
     }
+
+    public void OnItemControl(Item item)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public bool IsCarryItem()
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public void CarryControl()
+    {
+        throw new System.NotImplementedException();
+    }
 }

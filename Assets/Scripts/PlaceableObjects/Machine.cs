@@ -113,6 +113,26 @@ public class Machine : PlaceableObjectBase, IItemSlot
         return Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
     }
 
+    public void OnItemControl(Item item)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnItemControl()
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool IsCarryItem()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void CarryControl()
+    {
+        throw new NotImplementedException();
+    }
+
     private bool HasEnoughItemsToCraft()
     {
         return _recipeInputs.TrueForAll(recipeInput => _inputStacks[recipeInput.item] >= recipeInput.amount);

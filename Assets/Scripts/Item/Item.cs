@@ -32,6 +32,18 @@ public class Item : MonoBehaviour
         transform.DOLocalMove(position, .5f).OnComplete(() => _hasAlreadyMoved = false);
     }
 
+    public void MoveToItem(IItemSlot itemSlot)
+    {
+        _hasAlreadyMoved = true;
+        var position = itemSlot.GetCarryItemWorldPosition(this);
+        //var position = _grid.GetWorldPosition(inputGate) + new Vector3(0.5f, 0, 0.5f);
+        //var position = _grid.GetWorldPosition(inputGate);
+        transform.DOLocalMove(position, .5f).OnComplete(()=>{
+            _hasAlreadyMoved = false;
+            itemSlot.OnItemControl(this);
+                });
+    }
+
     public ItemSo GetItemSo()
     {
         return _itemSo;
