@@ -2,7 +2,7 @@
 using System.Linq;
 using GridSystem;
 using UnityEngine;
-public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
+public class ConveyorSplitter : PlaceableObjectBase
 {
     private Vector2Int _previousPosition;
     private Tile _previousTile;
@@ -43,7 +43,7 @@ public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
 
     private void ItemSplitting()
     {
-        if (_previousTile.OwnedObjectBase is not IItemSlot previousSlot || _item == null || !_item.CanMove) return;
+        if (_previousTile.OwnedObjectBase is not IItemCarrier previousSlot || _item == null || !_item.CanMove) return;
         if (previousSlot.GetGridPosition().All(p => p != _previousPosition)) return;
         var startIndex = _currentGateIndex;
         
@@ -51,12 +51,11 @@ public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
         {
             var tile = _gatesTiles[_currentGateIndex];
         
-            if (tile.OwnedObjectBase is IItemSlot nextSlot && 
+            if (tile.OwnedObjectBase is IItemCarrier nextSlot && 
                 nextSlot.GetGridPosition().Any(p => p == tile.GetGridPosition) && 
-                nextSlot.TrySetWorldItem(_item) &&
-                nextSlot.CanCarryItem(_item.GetItemSo()))
+                nextSlot.TrySetWorldItem(_item))
             {
-                _item.MoveToItemSlot(nextSlot.GetCarryItemWorldPosition(_item));
+                //_item.MoveToItemSlot(nextSlot.GetCarryItemWorldPosition(_item));
                 _item = null;
                 _currentGateIndex = (_currentGateIndex + 1) % _gatesTiles.Count;
                 break;
@@ -85,6 +84,11 @@ public class ConveyorSplitter : PlaceableObjectBase, IItemSlot
     public Vector3 GetCarryItemWorldPosition(Item item)
     {
         return Grid.GetWorldPosition(_previousPosition) + Grid.GetCellSizeOffset();
+    }
+
+    public void AddNeighbourCarrier(IItemCarrier carrier)
+    {
+        throw new System.NotImplementedException();
     }
 
     public void OnItemControl(Item item)

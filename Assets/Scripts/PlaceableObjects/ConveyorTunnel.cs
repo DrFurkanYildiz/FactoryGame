@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 
 public enum ConveyorTunnelType{ Input, Output}
-public class ConveyorTunnel : PlaceableObjectBase, IItemSlot
+public class ConveyorTunnel : PlaceableObjectBase
 {
     private Item _item;
     
@@ -27,7 +27,7 @@ public class ConveyorTunnel : PlaceableObjectBase, IItemSlot
         if (_item == null || !_item.CanMove) return;
         if (ConveyorTunnelType is ConveyorTunnelType.Input)
         {
-            if(TunnelPlaceableObjectBase is not IItemSlot targetConveyorTunnel) return;
+            if(TunnelPlaceableObjectBase is not IItemCarrier targetConveyorTunnel) return;
             if (targetConveyorTunnel.TrySetWorldItem(_item))
             {
                 _item.transform.position =
@@ -43,12 +43,12 @@ public class ConveyorTunnel : PlaceableObjectBase, IItemSlot
             var nextPlacedObject = Grid.GetGridObject(_nextPosition).OwnedObjectBase;
             if (nextPlacedObject == null) return;
             
-            if (nextPlacedObject is not IItemSlot nextPlacedSlot || !nextPlacedSlot.CanCarryItem(_item.GetItemSo())) return;
+            if (nextPlacedObject is not IItemCarrier nextPlacedSlot) return;
             if (nextPlacedSlot.GetGridPosition().All(p => p != _nextPosition)) return;
 
             if (nextPlacedSlot.TrySetWorldItem(_item))
             {
-                _item.MoveToItemSlot(nextPlacedSlot.GetCarryItemWorldPosition(_item));
+                //_item.MoveToItemSlot(nextPlacedSlot.GetCarryItemWorldPosition(_item));
                 _item = null;
             
                 Debug.Log("Take Action!");
@@ -79,6 +79,11 @@ public class ConveyorTunnel : PlaceableObjectBase, IItemSlot
     public Vector3 GetCarryItemWorldPosition(Item item)
     {
         return Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
+    }
+
+    public void AddNeighbourCarrier(IItemCarrier carrier)
+    {
+        throw new System.NotImplementedException();
     }
 
     public void OnItemControl(Item item)

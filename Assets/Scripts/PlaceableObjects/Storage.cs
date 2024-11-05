@@ -5,12 +5,13 @@ using GridSystem;
 using Helpers;
 using UnityEngine;
 
-public class Storage : PlaceableObjectBase, IItemSlot
+public class Storage : PlaceableObjectBase, IItemCarrier
 {
     private Vector2Int _gatePosition;
     [SerializeField] private StorageType _storageType;
     private Tile _gateNeighbourTile;
     private Item _gateItem;
+    private Item _item;
     private ItemSo _itemSo;
     
     [Serializable]
@@ -19,10 +20,11 @@ public class Storage : PlaceableObjectBase, IItemSlot
         Input, Output
     }
 
-    private float _spawnTimer;
-    private const float ItemSpawnTime = 1.5f;
     private int _debugSpawnItemCount;
     private int _debugStoreItemCount;
+
+    private Tile _itemSendingTile; 
+    
     protected override void Setup()
     {
         var positionList = placeableObjectSo.GetGridPositionList(Origin, Dir);
@@ -33,66 +35,44 @@ public class Storage : PlaceableObjectBase, IItemSlot
 
         _itemSo = GameAssets.i.GetItemSo(ItemType.C);
         _debugSpawnItemCount = 60;
+
+        var itemSendingCoordinate = _gatePosition + PlaceableObjectBaseSo.GetDirForwardVector(Dir);
+        _itemSendingTile = Grid.GetGridObject(itemSendingCoordinate);
+
+        //if (_storageType is StorageType.Output)
+        //InitializedItemCreator();
     }
     
 
     public override void DestroySelf()
     {
         base.DestroySelf();
-        
-        if(_gateItem != null)
-            _gateItem.DestroySelf();
+
+        if (_item != null)
+            _item.DestroySelf();
     }
 
     private void Update()
     {
-        if (_storageType is StorageType.Output)
+        if (_item == null && _debugSpawnItemCount > 0)
         {
-            if (_debugSpawnItemCount <= 0) return;
-            _spawnTimer += Time.deltaTime;
-
-            if (_spawnTimer >= ItemSpawnTime)
-            {
-                _spawnTimer = 0f;
-                OutputStorageAction();
-                //EventManager.TriggerEvent("OnItemAddedOrMoved");
-            }
-
-        }
-        else
-        {
-            InputStorageAction();
-        }
-        
-        //if(_storageType is StorageType.Input) InputStorageAction();
-        //else OutputStorageAction();
-        
-        
-        
-    }
-
-    private void OutputStorageAction()
-    {
-        Debug.Log("OutputStorageAction çağrıldı.");
-        if (_gateNeighbourTile.OwnedObjectBase is not IItemSlot itemSlotObj) return;
-
-        if (itemSlotObj.GetGridPosition().All(p => p != _gateNeighbourTile.GetGridPosition) ||
-            !itemSlotObj.CanCarryItem(_itemSo)) return;
-
-        if (_gateItem != null && _gateItem.CanMove)
-        {
-            //if (!itemSlotObj.TrySetWorldItem(_gateItem)) return;
-            //_gateItem.MoveToItemSlot(itemSlotObj.GetCarryItemWorldPosition(_gateItem));
-            
-            if(!itemSlotObj.IsCarryItem()) return;
-            _gateItem.MoveToItem(itemSlotObj);
-            _gateItem = null;
+            var position = Grid.GetWorldPosition(_gatePosition) + Grid.GetCellSizeOffset();
+            _item = Item.CreateItem(Grid, position, _itemSo);
             _debugSpawnItemCount--;
         }
-        else
+        
+        
+        if(_item != null && _item.CanMove)
         {
-            _gateItem = Item.CreateItem(Grid, _gatePosition, _itemSo);
+            if (_itemSendingTile?.OwnedObjectBase is not IItemCarrier nextCarrier) return;
+            if (nextCarrier.GetGridPosition().All(p => p != _itemSendingTile.GetGridPosition)) return;
+            if (nextCarrier.TrySetWorldItem(_item))
+            {
+                //_item.MoveToItem(nextCarrier);
+                _item = null; 
+            }
         }
+        
     }
 
     private void InputStorageAction()
@@ -109,7 +89,7 @@ public class Storage : PlaceableObjectBase, IItemSlot
     {
         return itemSo.isSolidItem;
     }
-
+    
     public bool TrySetWorldItem(Item item)
     {
         if (_gateItem != null) return false;
@@ -125,20 +105,5 @@ public class Storage : PlaceableObjectBase, IItemSlot
     public Vector3 GetCarryItemWorldPosition(Item item)
     {
         return Grid.GetWorldPosition(_gatePosition) + Grid.GetCellSizeOffset();
-    }
-
-    public void OnItemControl(Item item)
-    {
-        OutputStorageAction();
-    }
-
-    public bool IsCarryItem()
-    {
-        throw new NotImplementedException();
-    }
-
-    public void CarryControl()
-    {
-        throw new NotImplementedException();
     }
 }

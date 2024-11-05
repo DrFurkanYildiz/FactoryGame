@@ -4,7 +4,7 @@ using System.Linq;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-public class Machine : PlaceableObjectBase, IItemSlot
+public class Machine : PlaceableObjectBase
 {
     private PlaceableBlueprintSo _blueprintSo;
     private float _craftingProgress;
@@ -113,6 +113,11 @@ public class Machine : PlaceableObjectBase, IItemSlot
         return Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
     }
 
+    public void AddNeighbourCarrier(IItemCarrier carrier)
+    {
+        throw new NotImplementedException();
+    }
+
     public void OnItemControl(Item item)
     {
         throw new NotImplementedException();
@@ -149,9 +154,9 @@ public class Machine : PlaceableObjectBase, IItemSlot
             // Çıkış kapısındaki komşu nesneyi al
             var outputPosition = outputGate + PlaceableObjectSo.GetDirForwardVector(Dir);
             var outputTile = Grid.GetGridObject(outputPosition);
-            if (outputTile.OwnedObjectBase is not IItemSlot itemSlotObj)
+            if (outputTile.OwnedObjectBase is not IItemCarrier itemSlotObj)
             {
-                Debug.LogWarning($"Komşu nesne IItemSlot değil: {outputTile.OwnedObjectBase}");
+                Debug.LogWarning($"Komşu nesne IItemCarrier değil: {outputTile.OwnedObjectBase}");
                 continue;
             }
 
@@ -177,14 +182,16 @@ public class Machine : PlaceableObjectBase, IItemSlot
             }
 
             // Öğeyi çıkış noktasına aktarmayı dene
-            var itemInstance = Item.CreateItem(Grid, outputGate, outputItem);
+            //var itemInstance = Item.CreateItem(Grid, outputGate, outputItem);
+            var position = Grid.GetWorldPosition(outputGate) + Grid.GetCellSizeOffset();
+            var itemInstance = Item.CreateItem(Grid, position, outputItem);
             Debug.Log($"{outputItem.name} öğesi {outputGate} noktasında oluşturuldu.");
 
-            if (itemSlotObj.TrySetWorldItem(itemInstance) && itemSlotObj.CanCarryItem(itemInstance.GetItemSo()))
+            if (itemSlotObj.TrySetWorldItem(itemInstance))
             {
                 // Başarıyla aktarılırsa öğeyi taşı ve stoktan düş
                 Debug.Log($"{outputItem.name} öğesi başarıyla çıkış kapısına aktarıldı.");
-                itemInstance.MoveToItemSlot(itemSlotObj.GetCarryItemWorldPosition(itemInstance));
+                //itemInstance.MoveToItemSlot(itemSlotObj.GetCarryItemWorldPosition(itemInstance));
                 _outputStacks[outputItem]--;
                 Debug.Log($"{outputItem.name} öğesi stoktan düşüldü. Kalan miktar: {_outputStacks[outputItem]}");
             }

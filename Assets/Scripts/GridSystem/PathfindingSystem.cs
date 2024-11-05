@@ -114,7 +114,7 @@ namespace GridSystem
             return null;
         }
 
-        public List<T> GetNeighbour(T node, bool isCornerIncluded)
+        public List<T> GetNeighbour(T node, bool isCornerIncluded = false)
         {
             return GetNeighbourList(node, isCornerIncluded);
         }

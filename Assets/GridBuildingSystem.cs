@@ -157,26 +157,8 @@ public class GridBuildingSystem : MonoBehaviour
                 var mousePosition = Mouse3D.GetMouseWorldPosition();
                 ObjectPlacement(_grid, _placeableObjectSo, mousePosition, _dir, out var placedObject);
 
-                if (placedObject is ConveyorBelt belt)
+                if (placedObject is ConveyorBelt)
                 {
-                    var neighbours = _pathfindingSystem.GetNeighbour(placedObject.GetTile, false);
-                    foreach (var neighbour in neighbours)
-                    {
-                        var p = neighbour.OwnedObjectBase;
-                        if (p != null && p is ConveyorBelt neighbourBelt)
-                        {
-                            neighbourBelt.AddNeighbour(belt);
-
-                            var n = _pathfindingSystem.GetNeighbour(neighbourBelt.GetTile, false);
-                            foreach (var tile in n)
-                            {
-                                var np = tile.OwnedObjectBase;
-                                if (np != null && np is ConveyorBelt npBelt)
-                                    npBelt.AddNeighbour(neighbourBelt);
-                            }
-                        }
-                    }
-                    
                     placedObject.transform.SetParent(GameObject.Find("Belts").transform);
                     placedObject.GetComponentInChildren<ConveyorBeltVisualController>()
                         .SetVisualDirection(_beltVisualDirection);
