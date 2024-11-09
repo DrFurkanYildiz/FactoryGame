@@ -24,7 +24,7 @@ public class ConveyorTunnel : PlaceableObjectBase
 
     private void Update()
     {
-        if (_item == null || !_item.CanMove) return;
+        if (_item == null) return;
         if (ConveyorTunnelType is ConveyorTunnelType.Input)
         {
             if(TunnelPlaceableObjectBase is not IItemCarrier targetConveyorTunnel) return;

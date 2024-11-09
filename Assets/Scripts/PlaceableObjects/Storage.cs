@@ -57,18 +57,17 @@ public class Storage : PlaceableObjectBase, IItemCarrier
         if (_item == null && _debugSpawnItemCount > 0)
         {
             var position = Grid.GetWorldPosition(_gatePosition) + Grid.GetCellSizeOffset();
-            _item = Item.CreateItem(Grid, position, _itemSo);
+            _item = Item.CreateItem(position, _itemSo);
             _debugSpawnItemCount--;
         }
         
         
-        if(_item != null && _item.CanMove)
+        if(_item != null)
         {
             if (_itemSendingTile?.OwnedObjectBase is not IItemCarrier nextCarrier) return;
             if (nextCarrier.GetGridPosition().All(p => p != _itemSendingTile.GetGridPosition)) return;
             if (nextCarrier.TrySetWorldItem(_item))
             {
-                //_item.MoveToItem(nextCarrier);
                 _item = null; 
             }
         }
@@ -77,7 +76,7 @@ public class Storage : PlaceableObjectBase, IItemCarrier
 
     private void InputStorageAction()
     {
-        if (_gateItem != null && _gateItem.CanMove)
+        if (_gateItem != null)
         {
             _gateItem.DestroySelf();
             _gateItem = null;

@@ -76,7 +76,7 @@ public class Machine : PlaceableObjectBase
             }
         }
 
-        if (_stackItem.Count > 0 && _stackItem[0]?.CanMove == true)
+        if (_stackItem.Count > 0)
         {
             _stackItem[0].DestroySelf();
             _stackItem.RemoveAt(0);
@@ -94,12 +94,11 @@ public class Machine : PlaceableObjectBase
 
     public bool TrySetWorldItem(Item item)
     {
-        var itemSo = item.GetItemSo();
-        if (!_inputStacks.ContainsKey(itemSo) || _inputStacks[itemSo] >= InputItemMaxStackAmount)
+        if (!_inputStacks.ContainsKey(item.ItemSo) || _inputStacks[item.ItemSo] >= InputItemMaxStackAmount)
             return false;
 
         _stackItem.Add(item);
-        _inputStacks[itemSo]++;
+        _inputStacks[item.ItemSo]++;
         return true;
     }
 
@@ -184,7 +183,7 @@ public class Machine : PlaceableObjectBase
             // Öğeyi çıkış noktasına aktarmayı dene
             //var itemInstance = Item.CreateItem(Grid, outputGate, outputItem);
             var position = Grid.GetWorldPosition(outputGate) + Grid.GetCellSizeOffset();
-            var itemInstance = Item.CreateItem(Grid, position, outputItem);
+            var itemInstance = Item.CreateItem(position, outputItem);
             Debug.Log($"{outputItem.name} öğesi {outputGate} noktasında oluşturuldu.");
 
             if (itemSlotObj.TrySetWorldItem(itemInstance))

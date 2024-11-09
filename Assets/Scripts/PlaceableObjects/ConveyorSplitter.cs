@@ -43,7 +43,7 @@ public class ConveyorSplitter : PlaceableObjectBase
 
     private void ItemSplitting()
     {
-        if (_previousTile.OwnedObjectBase is not IItemCarrier previousSlot || _item == null || !_item.CanMove) return;
+        if (_previousTile.OwnedObjectBase is not IItemCarrier previousSlot || _item == null) return;
         if (previousSlot.GetGridPosition().All(p => p != _previousPosition)) return;
         var startIndex = _currentGateIndex;
         
