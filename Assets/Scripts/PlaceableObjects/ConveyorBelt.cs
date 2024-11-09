@@ -1,8 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GridSystem;
-using Sirenix.OdinInspector;
 using UnityEngine;
 
 public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
@@ -12,12 +12,12 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     private Vector2Int _gridPosition;
     public Vector2Int NextPosition { get; private set; }
 
-    private readonly List<Item> _items = new();
+    private readonly Queue<Item> _items = new();
     private const int MaxItemCarryCount = 3;
     private ConveyorBeltVisualController.BeltVisualDirection _direction;
     private List<Vector3> _itemCarryList;
-
-    [ShowInInspector] private Dictionary<int, Item> _indexItems = new();
+    private readonly Dictionary<int, Item> _indexItems = new();
+    
     protected override void Setup()
     {
         _gridPosition = Origin;
@@ -40,23 +40,24 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     {
         base.DestroySelf();
 
-        if (_items.Count <= 0) return;
-        foreach (var item in _items)
+        while (_items.Count > 0)
+        {
+            var item = _items.Dequeue();
             item.DestroySelf();
+        }
     }
 
     private void Update()
     {
-        
         if (_items.Count == 0) return;
 
         for (int i = 0; i < MaxItemCarryCount; i++)
         {
             if (_indexItems[i] == null) continue;
-        
+
             var item = _indexItems[i];
             var targetPosition = _itemCarryList[i];
-        
+
             item.transform.position = Vector3.MoveTowards(item.transform.position, targetPosition, .01f);
 
             if (item.transform.position == targetPosition)
@@ -70,22 +71,23 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
                 {
                     if (_itemSendingTile?.OwnedObjectBase is not IItemCarrier nextCarrier) return;
                     if (nextCarrier.GetGridPosition().All(p => p != _itemSendingTile.GetGridPosition)) return;
-                    
+
                     if (nextCarrier.TrySetWorldItem(item))
                     {
-                        _items.Remove(item);
+                        _items.Dequeue();
                         _indexItems[i] = null;
                     }
                 }
             }
         }
     }
+
     public bool TrySetWorldItem(Item item)
     {
         if (!item.ItemSo.isSolidItem) return false;
         if (_items.Count >= MaxItemCarryCount || _indexItems[0] != null) return false;
         
-        _items.Add(item);
+        _items.Enqueue(item);
         _indexItems[0] = item;
         return true;
     }
