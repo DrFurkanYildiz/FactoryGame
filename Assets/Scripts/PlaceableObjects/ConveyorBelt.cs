@@ -14,10 +14,12 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
     private readonly Queue<Item> _items = new();
     private const int MaxItemCarryCount = 3;
-    private ConveyorBeltVisualController.BeltVisualDirection _direction;
+
+    private ConveyorBeltVisualController _beltVisual;
+
     private List<Vector3> _itemCarryList;
     private readonly Dictionary<int, Item> _indexItems = new();
-    
+
     protected override void Setup()
     {
         _gridPosition = Origin;
@@ -25,17 +27,18 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         _previousPosition = Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1;
         NextPosition = Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir);
 
-
-        _direction = transform.GetComponentInChildren<ConveyorBeltVisualController>().GVisualDirection;
-        _itemCarryList = GetCarryPositions();
-
-
+        _beltVisual = transform.GetComponentInChildren<ConveyorBeltVisualController>();
         _itemSendingTile = Grid.GetGridObject(NextPosition);
 
         for (var i = 0; i < MaxItemCarryCount; i++)
             _indexItems.Add(i, null);
     }
-    
+
+    private void Start()
+    {
+        _itemCarryList = GetCarryPositions();
+    }
+
     public override void DestroySelf()
     {
         base.DestroySelf();
@@ -86,7 +89,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     {
         if (!item.ItemSo.isSolidItem) return false;
         if (_items.Count >= MaxItemCarryCount || _indexItems[0] != null) return false;
-        
+
         _items.Enqueue(item);
         _indexItems[0] = item;
         return true;
@@ -96,68 +99,65 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     {
         return new[] { _gridPosition };
     }
-    
+
     private List<Vector3> GetCarryPositions()
     {
         var list = new List<Vector3>();
+        var basePosition = Grid.GetWorldPosition(_gridPosition) + Grid.GetCellSizeOffset();
         var a = Grid.GetCellSize() / MaxItemCarryCount;
-        switch (_direction)
+
+        switch (_beltVisual.direction)
         {
             case ConveyorBeltVisualController.BeltVisualDirection.Flat:
-                switch (Dir)
-                {
-                    case Dir.Down:
-                        for (var i = 1; i > 1 - MaxItemCarryCount; i--)
-                            list.Add(Grid.GetWorldPosition(_gridPosition) + Grid.GetCellSizeOffset() +
-                                     new Vector3(0, 0, a * i));
-                        break;
-                    case Dir.Left:
-                        for (var i = 1; i > 1 - MaxItemCarryCount; i--)
-                            list.Add(Grid.GetWorldPosition(_gridPosition) + Grid.GetCellSizeOffset() +
-                                     new Vector3(a * i, 0, 0));
-                        break;
-                    case Dir.Up:
-                        for (var i = -1; i < MaxItemCarryCount - 1; i++)
-                            list.Add(Grid.GetWorldPosition(_gridPosition) + Grid.GetCellSizeOffset() +
-                                     new Vector3(0, 0, a * i));
-                        break;
-                    case Dir.Right:
-                        for (var i = -1; i < MaxItemCarryCount - 1; i++)
-                            list.Add(Grid.GetWorldPosition(_gridPosition) + Grid.GetCellSizeOffset() +
-                                     new Vector3(a * i, 0, 0));
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-
-                break;
-            /*
-            case ConveyorBeltVisualController.BeltVisualDirection.DownRight:
-
                 for (var i = 1; i > 1 - MaxItemCarryCount; i--)
-                    list.Add(Grid.GetWorldPosition(_gridPosition) + new Vector3(a * i, 0, 0));
-
+                {
+                    var offset = Dir switch
+                    {
+                        Dir.Down => new Vector3(0, 0, a * i),
+                        Dir.Left => new Vector3(a * i, 0, 0),
+                        Dir.Up => new Vector3(0, 0, a * -i),
+                        Dir.Right => new Vector3(a * -i, 0, 0),
+                        _ => throw new ArgumentOutOfRangeException()
+                    };
+                    list.Add(basePosition + offset);
+                }
+                break;
+            case ConveyorBeltVisualController.BeltVisualDirection.DownRight:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? 0 : -a * i, 0, i > 0 ? a * i : 0));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.DownLeft:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? 0 : a * i, 0, i > 0 ? a * i : 0));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.UpRight:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? 0 : -a * i, 0, i > 0 ? -a * i : 0));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.UpLeft:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? 0 : a * i, 0, i > 0 ? -a * i : 0));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.RightDown:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? -a * i : 0, 0, i > 0 ? 0 : a * i));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.RightUp:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? -a * i : 0, 0, i > 0 ? 0 : -a * i));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.LeftDown:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? a * i : 0, 0, i > 0 ? 0 : a * i));
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.LeftUp:
+                for (var i = 1; i > 1 - MaxItemCarryCount; i--)
+                    list.Add(basePosition + new Vector3(i > 0 ? a * i : 0, 0, i > 0 ? 0 : -a * i));
                 break;
-                */
             default:
                 throw new ArgumentOutOfRangeException();
         }
 
         return list;
     }
-
 }

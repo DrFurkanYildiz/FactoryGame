@@ -16,9 +16,8 @@ public class ConveyorBeltVisualController : MonoBehaviour
         LeftUp
     }
 
-    private List<Transform> _visualList = new();
-    private BeltVisualDirection _direction;
-    public BeltVisualDirection GVisualDirection => _direction;
+    private readonly List<Transform> _visualList = new();
+    public BeltVisualDirection direction { get; private set; }
 
     private void Awake()
     {
@@ -28,14 +27,14 @@ public class ConveyorBeltVisualController : MonoBehaviour
     
     public void SetVisualDirection(BeltVisualDirection dir)
     {
-        _direction = dir;
-        ChangeVisual(_direction);
+        direction = dir;
+        ChangeVisual(direction);
         Debug.Log(dir);
     }
 
-    private void ChangeVisual(BeltVisualDirection direction)
+    private void ChangeVisual(BeltVisualDirection dir)
     {
-        var i = direction switch
+        var i = dir switch
         {
             BeltVisualDirection.Flat => 0,
             BeltVisualDirection.DownRight => 2,
@@ -61,7 +60,7 @@ public class ConveyorBeltVisualController : MonoBehaviour
     {
         _visualList[index].gameObject.SetActive(true);
     }
-    public BeltVisualDirection GetDir(Dir myDirection, Dir preDirection)
+    public BeltVisualDirection GetVisualDirection(Dir myDirection, Dir preDirection)
     {
         return (myDirection, preDirection) switch
         {
@@ -77,7 +76,7 @@ public class ConveyorBeltVisualController : MonoBehaviour
             (Dir.Right, Dir.Left or Dir.Right) => BeltVisualDirection.Flat,
             (Dir.Up, Dir.Up or Dir.Down) => BeltVisualDirection.Flat,
             (Dir.Down, Dir.Up or Dir.Down) => BeltVisualDirection.Flat,
-            _ => _direction
+            _ => direction
         };
     }
 }

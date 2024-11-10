@@ -70,7 +70,7 @@ public class GridBuildingSystem : MonoBehaviour
             
             if (mouseGridPosition != _conveyorBeltChangedVisualCoordinate)
             {
-                if (belt.GVisualDirection is not ConveyorBeltVisualController.BeltVisualDirection.Flat)
+                if (belt.direction is not ConveyorBeltVisualController.BeltVisualDirection.Flat)
                     belt.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
                 _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
             }
@@ -82,8 +82,8 @@ public class GridBuildingSystem : MonoBehaviour
                 .FirstOrDefault(conveyorBelt => conveyorBelt != null && conveyorBelt.NextPosition == currentTile.GetGridPosition);
 
             if (preBelt == null) return;
-            var dir = belt.GetDir(_dir, preBelt.Dir);
-            if (dir == belt.GVisualDirection) return;
+            var dir = belt.GetVisualDirection(_dir, preBelt.Dir);
+            if (dir == belt.direction) return;
             
             belt.SetVisualDirection(dir);
             _beltVisualDirection = dir;
@@ -177,10 +177,14 @@ public class GridBuildingSystem : MonoBehaviour
     {
         if (Input.GetMouseButton(1))
         {
-            var placedObject = _grid.GetGridObject(Mouse3D.GetMouseWorldPosition()).OwnedObjectBase;
+            var currentTile = _grid.GetGridObject(Mouse3D.GetMouseWorldPosition());
+            var placedObject = currentTile.OwnedObjectBase;
+
             if (placedObject == null) return;
 
             placedObject.DestroySelf();
+
+            // Clear the grid position data
             var gridPositionList = placedObject.GetGridPositionList();
             foreach (var gridPosition in gridPositionList)
                 _grid.GetGridObject(gridPosition.x, gridPosition.y).ClearPlacedObject();
