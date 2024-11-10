@@ -75,6 +75,13 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
                     if (_itemSendingTile?.OwnedObjectBase is not IItemCarrier nextCarrier) return;
                     if (nextCarrier.GetGridPosition().All(p => p != _itemSendingTile.GetGridPosition)) return;
 
+                    if (nextCarrier is ConveyorBelt conveyorBelt && conveyorBelt.Dir != Dir &&
+                        !CanTransferItem(Dir, conveyorBelt._beltVisual.direction))
+                        return;
+                    
+                    if(nextCarrier is Splitter splitter && splitter.Dir != Dir)
+                        return;
+                    
                     if (nextCarrier.TrySetWorldItem(item))
                     {
                         _items.Dequeue();
@@ -100,6 +107,35 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         return new[] { _gridPosition };
     }
 
+    private bool CanTransferItem(Dir currentDir, ConveyorBeltVisualController.BeltVisualDirection targetDirection)
+    {
+        switch (currentDir)
+        {
+            case Dir.Down:
+                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.DownLeft
+                    or ConveyorBeltVisualController.BeltVisualDirection.DownRight)
+                    return true;
+                break;
+            case Dir.Left:
+                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.LeftDown
+                    or ConveyorBeltVisualController.BeltVisualDirection.LeftUp)
+                    return true;
+                break;
+            case Dir.Up:
+                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.UpLeft
+                    or ConveyorBeltVisualController.BeltVisualDirection.UpRight)
+                    return true;
+                break;
+            case Dir.Right:
+                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.RightDown
+                    or ConveyorBeltVisualController.BeltVisualDirection.RightUp)
+                    return true;
+                break;
+        }
+
+        return false;
+    }
+
     private List<Vector3> GetCarryPositions()
     {
         var list = new List<Vector3>();
@@ -121,6 +157,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
                     };
                     list.Add(basePosition + offset);
                 }
+
                 break;
             case ConveyorBeltVisualController.BeltVisualDirection.DownRight:
                 for (var i = 1; i > 1 - MaxItemCarryCount; i--)

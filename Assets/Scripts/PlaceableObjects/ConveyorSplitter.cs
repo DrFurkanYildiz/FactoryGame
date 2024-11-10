@@ -80,29 +80,4 @@ public class ConveyorSplitter : PlaceableObjectBase
     {
         return new[] { _previousPosition };
     }
-
-    public Vector3 GetCarryItemWorldPosition(Item item)
-    {
-        return Grid.GetWorldPosition(_previousPosition) + Grid.GetCellSizeOffset();
-    }
-
-    public void AddNeighbourCarrier(IItemCarrier carrier)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public void OnItemControl(Item item)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public bool IsCarryItem()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public void CarryControl()
-    {
-        throw new System.NotImplementedException();
-    }
 }

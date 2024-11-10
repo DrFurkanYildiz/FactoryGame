@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 187ca4f3c7164678ae1d44bc36a77acf, type: 3}
+  m_Name: Splitter
+  m_EditorClassIdentifier: 
+  type: 5
+  prefab: {fileID: 4528826241264032069, guid: bad7e8eae2d4ef342ab2592236aa56af, type: 3}
+  visual: {fileID: 261154728464102486, guid: d9272f2464e93034383b31abbd37c0a1, type: 3}
+  height: 1
+  width: 1
