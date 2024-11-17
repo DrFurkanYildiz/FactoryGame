@@ -29,7 +29,8 @@ public class ConveyorBeltVisualController : MonoBehaviour
     {
         direction = dir;
         ChangeVisual(direction);
-        Debug.Log(dir);
+        GetComponentInParent<ConveyorBelt>()?.UpdateItemCarryList();
+        //Debug.Log(dir);
     }
 
     private void ChangeVisual(BeltVisualDirection dir)

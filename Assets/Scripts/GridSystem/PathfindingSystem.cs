@@ -15,7 +15,7 @@ namespace GridSystem
         void CalculateFCost();
     }
 
-    public class PathfindingSystem<T> where T : class, IPathNode
+    public class PathfindingSystem<T> where T : IPathNode
     {
         private readonly Grid<T> _grid;
 

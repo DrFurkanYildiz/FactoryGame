@@ -24,21 +24,25 @@ public class GridBuildingSystem : MonoBehaviour
     private ConveyorBeltVisualController.BeltVisualDirection _beltVisualDirection;
     private Vector2Int _conveyorBeltChangedVisualCoordinate;
 
-    private PathfindingSystem<Tile> _pathfindingSystem;
+    public PathfindingSystem<Tile> PathfindingSystem { get; private set; }
 
     private Action<PlaceableType> _onSelectedPlacedObject;
+
+    private bool _rotateLocked;
+    private int _lockedIndex;
 
     private void Awake()
     {
         Instance = this;
         _grid = InitializeGrid(20, 20, 1f);
-        _pathfindingSystem = new PathfindingSystem<Tile>(_grid);
+        PathfindingSystem = new PathfindingSystem<Tile>(_grid);
 
         _onSelectedPlacedObject += SelectObject;
     }
+
     private static Grid<Tile> InitializeGrid(int width, int height, float cellSize)
     {
-        return new Grid<Tile>(width, height, cellSize, Vector3.zero, 
+        return new Grid<Tile>(width, height, cellSize, Vector3.zero,
             (Grid<Tile> g, int x, int y) => new Tile(g, x, y));
     }
 
@@ -48,8 +52,8 @@ public class GridBuildingSystem : MonoBehaviour
         HandleSelectObject();
         HandleRotateObject();
         HandleDemolish();
-        
-        
+
+
         if (_isFirstConveyorTunnelPlaced)
         {
             var mousePosition = Mouse3D.GetMouseWorldPosition();
@@ -63,32 +67,69 @@ public class GridBuildingSystem : MonoBehaviour
             HandlePlacement();
         }
 
-        if (_placeableObjectSo != null && _placeableObjectSo.type is PlaceableType.ConveyorBelt)
+        if (_placeableObjectSo != null)
         {
+            if (_placeableObjectSo.type is not PlaceableType.ConveyorBelt)
+            {
+                _rotateLocked = false;
+                _lockedIndex = 0;
+                return;
+            }
+            
+            
             var mouseGridPosition = _grid.GetCoordinate(Mouse3D.GetMouseWorldPosition());
             var belt = _visual.GetComponent<ConveyorBeltVisualController>();
-            
+
             if (mouseGridPosition != _conveyorBeltChangedVisualCoordinate)
             {
                 if (belt.direction is not ConveyorBeltVisualController.BeltVisualDirection.Flat)
                     belt.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
                 _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
             }
-            
-            var currentTile = _grid.GetGridObject(mouseGridPosition);
-            var preBelt = _pathfindingSystem
-                .GetNeighbour(currentTile, false)
-                .Select(tile => tile.OwnedObjectBase as ConveyorBelt)
-                .FirstOrDefault(conveyorBelt => conveyorBelt != null && conveyorBelt.NextPosition == currentTile.GetGridPosition);
 
-            if (preBelt == null) return;
-            var dir = belt.GetVisualDirection(_dir, preBelt.Dir);
-            if (dir == belt.direction) return;
-            
-            belt.SetVisualDirection(dir);
-            _beltVisualDirection = dir;
-            _conveyorBeltChangedVisualCoordinate = mouseGridPosition;
+            var currentTile = _grid.GetGridObject(mouseGridPosition);
+            var list = currentTile.GetNeighbourConveyorBelt(PathfindingSystem);
+
+            switch (list.Count)
+            {
+                case 1:
+                    UpdateConveyorBeltVisual(list, 0);
+                    break;
+                case 2:
+                    var previousPosition = mouseGridPosition + PlaceableObjectBaseSo.GetDirForwardVector(_dir) * -1;
+                    var nextPosition = mouseGridPosition + PlaceableObjectBaseSo.GetDirForwardVector(_dir);
+                    var a = list.Count(b => b.Origin == previousPosition || b.Origin == nextPosition);
+
+                    if (a <= 1)
+                    {
+                        _rotateLocked = true;
+                        if (Input.GetKeyDown(KeyCode.R))
+                            _lockedIndex = (_lockedIndex + 1) % list.Count;
+
+                        UpdateConveyorBeltVisual(list, _lockedIndex);
+                        return;
+                    }
+
+                    goto case 1;
+
+                case 3: goto case 2;
+            }
+
+            _rotateLocked = false;
+            _lockedIndex = 0;
         }
+    }
+
+    private void UpdateConveyorBeltVisual(IReadOnlyList<ConveyorBelt> list, int i)
+    {
+        var mouseGridPosition = _grid.GetCoordinate(Mouse3D.GetMouseWorldPosition());
+        var belt = _visual.GetComponent<ConveyorBeltVisualController>();
+        var dir = belt.GetVisualDirection(_dir, list[i].Dir);
+        if (dir == belt.direction) return;
+
+        belt.SetVisualDirection(dir);
+        _beltVisualDirection = dir;
+        _conveyorBeltChangedVisualCoordinate = mouseGridPosition;
     }
 
     private void LateUpdate()
@@ -113,6 +154,7 @@ public class GridBuildingSystem : MonoBehaviour
         _visual = Instantiate(_placeableObjectSo.visual, GetMouseWorldSnappedPosition(), GetPlacedObjectRotation(),
             transform);
     }
+
     private void HandleSelectObject()
     {
         if (Input.GetKeyDown(KeyCode.Alpha1)) _onSelectedPlacedObject?.Invoke(PlaceableType.Storage);
@@ -120,8 +162,8 @@ public class GridBuildingSystem : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha3)) _onSelectedPlacedObject?.Invoke(PlaceableType.Splitter);
         if (Input.GetKeyDown(KeyCode.Alpha4)) _onSelectedPlacedObject?.Invoke(PlaceableType.Machine1);
         if (Input.GetKeyDown(KeyCode.Alpha5)) _onSelectedPlacedObject?.Invoke(PlaceableType.ConveyorTunnel);
-        
-        
+
+
         //TODO: Deselect ve Demolish refaktör edilecek.
         if (Input.GetMouseButtonDown(1))
         {
@@ -134,15 +176,16 @@ public class GridBuildingSystem : MonoBehaviour
         }
     }
 
-    
+
     private void SelectObject(PlaceableType placeableType)
     {
         _placeableObjectSo = GameAssets.i.GetPlacedSo(placeableType);
         RefreshVisual();
     }
+
     private void HandleRotateObject()
     {
-        if (Input.GetKeyDown(KeyCode.R))
+        if (Input.GetKeyDown(KeyCode.R) && !_rotateLocked)
         {
             _dir = PlaceableObjectBaseSo.GetNextDir(_dir);
         }
@@ -155,14 +198,32 @@ public class GridBuildingSystem : MonoBehaviour
             if (_placeableObjectSo != null)
             {
                 var mousePosition = Mouse3D.GetMouseWorldPosition();
+                
                 ObjectPlacement(_grid, _placeableObjectSo, mousePosition, _dir, out var placedObject);
 
-                if (placedObject is ConveyorBelt)
+                if (placedObject is ConveyorBelt currentBelt)
                 {
                     placedObject.transform.SetParent(GameObject.Find("Belts").transform);
                     placedObject.GetComponentInChildren<ConveyorBeltVisualController>()
                         .SetVisualDirection(_beltVisualDirection);
                     _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
+
+
+                    foreach (var tile in PathfindingSystem.GetNeighbour(_grid.GetGridObject(mousePosition)))
+                    {
+                        if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
+                        {
+                            if (currentBelt.NextPosition == neighbourBelt.Origin)
+                            {
+                                if (neighbourBelt.GetNeighbourBeltCount() == 1)
+                                {
+                                    var beltV = neighbourBelt.GetComponentInChildren<ConveyorBeltVisualController>();
+                                    var dir = beltV.GetVisualDirection(neighbourBelt.Dir, _dir);
+                                    beltV.SetVisualDirection(dir);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (placedObject is ConveyorTunnel)
@@ -181,15 +242,46 @@ public class GridBuildingSystem : MonoBehaviour
             var placedObject = currentTile.OwnedObjectBase;
 
             if (placedObject == null) return;
-
-            placedObject.DestroySelf();
-
-            // Clear the grid position data
-            var gridPositionList = placedObject.GetGridPositionList();
-            foreach (var gridPosition in gridPositionList)
-                _grid.GetGridObject(gridPosition.x, gridPosition.y).ClearPlacedObject();
+            DestroyPlacedObject(placedObject);
         }
     }
+
+    private void DestroyPlacedObject(PlaceableObjectBase placedObject)
+    {
+        placedObject.DestroySelf();
+
+        // Clear the grid position data
+        var gridPositionList = placedObject.GetGridPositionList();
+        foreach (var gridPosition in gridPositionList)
+            _grid.GetGridObject(gridPosition.x, gridPosition.y).ClearPlacedObject();
+
+        if (placedObject is ConveyorBelt currentBelt)
+        {
+            foreach (var tile in PathfindingSystem.GetNeighbour(placedObject.GetTile))
+            {
+                if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
+                {
+                    if (currentBelt.NextPosition == neighbourBelt.Origin)
+                    {
+                        var nList = neighbourBelt.GetNeighbourBelt();
+                        var beltV = neighbourBelt.GetComponentInChildren<ConveyorBeltVisualController>();
+
+                        if (nList.Count > 0)
+                        {
+                            var dir = beltV.GetVisualDirection(neighbourBelt.Dir, nList[0].Dir);
+                            beltV.SetVisualDirection(dir);
+                        }
+                        else
+                        {
+                            if (beltV.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
+                                beltV.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     private void ObjectPlacement(Grid<Tile> grid, PlaceableObjectBaseSo placeableObjectSo, Vector3 selectPosition,
         Dir dir, out PlaceableObjectBase placeableObjectBase)
@@ -248,6 +340,7 @@ public class GridBuildingSystem : MonoBehaviour
             ? Quaternion.Euler(0, PlaceableObjectSo.GetRotationAngle(_dir), 0)
             : Quaternion.identity;
     }
+
     private Quaternion GetPlacedObjectRotation(Dir dir)
     {
         return Quaternion.Euler(0, PlaceableObjectSo.GetRotationAngle(dir), 0);
@@ -255,10 +348,11 @@ public class GridBuildingSystem : MonoBehaviour
 
     private List<Vector3> FindBeltPath(Vector2Int start, Vector2Int end)
     {
-        var path = _pathfindingSystem.FindPath(_grid.GetWorldPosition(start), _grid.GetWorldPosition(end), false);
-        if (path == null) Debug.Log("Path not found!");//Debug.DrawLine(path[i], path[i + 1], Color.red, 1f);
+        var path = PathfindingSystem.FindPath(_grid.GetWorldPosition(start), _grid.GetWorldPosition(end), false);
+        if (path == null) Debug.Log("Path not found!"); //Debug.DrawLine(path[i], path[i + 1], Color.red, 1f);
         return path;
     }
+
     private void ConveyorTunnelAssignment(PlaceableObjectBase placeableObjectBase)
     {
         if (!_isFirstConveyorTunnelPlaced)
@@ -269,13 +363,15 @@ public class GridBuildingSystem : MonoBehaviour
         }
         else
         {
-            (_firstPlaceableTunnel.TunnelPlaceableObjectBase, placeableObjectBase.TunnelPlaceableObjectBase) = (placeableObjectBase, _firstPlaceableTunnel);
+            (_firstPlaceableTunnel.TunnelPlaceableObjectBase, placeableObjectBase.TunnelPlaceableObjectBase) =
+                (placeableObjectBase, _firstPlaceableTunnel);
             placeableObjectBase.ConveyorTunnelType = ConveyorTunnelType.Output;
             _firstPlaceableTunnel = null;
             _isFirstConveyorTunnelPlaced = false;
             DeselectObjectType();
         }
     }
+
     private bool IsSecondTunnelValid(Vector2Int placedObjectOrigin)
     {
         var deltaX = placedObjectOrigin.x - _firstPlaceableTunnel.Origin.x;
