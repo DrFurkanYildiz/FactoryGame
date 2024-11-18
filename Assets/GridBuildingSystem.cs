@@ -203,9 +203,8 @@ public class GridBuildingSystem : MonoBehaviour
 
                 if (placedObject is ConveyorBelt currentBelt)
                 {
-                    placedObject.transform.SetParent(GameObject.Find("Belts").transform);
-                    placedObject.GetComponentInChildren<ConveyorBeltVisualController>()
-                        .SetVisualDirection(_beltVisualDirection);
+                    currentBelt.transform.SetParent(GameObject.Find("Belts").transform);
+                    currentBelt.BeltVisual.SetVisualDirection(_beltVisualDirection);
                     _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
 
 
@@ -215,11 +214,10 @@ public class GridBuildingSystem : MonoBehaviour
                         {
                             if (currentBelt.NextPosition == neighbourBelt.Origin)
                             {
-                                if (neighbourBelt.GetNeighbourBeltCount() == 1)
+                                if (neighbourBelt.GetNeighbourBelt().Count == 1)
                                 {
-                                    var beltV = neighbourBelt.GetComponentInChildren<ConveyorBeltVisualController>();
-                                    var dir = beltV.GetVisualDirection(neighbourBelt.Dir, _dir);
-                                    beltV.SetVisualDirection(dir);
+                                    var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, _dir);
+                                    neighbourBelt.BeltVisual.SetVisualDirection(dir);
                                 }
                             }
                         }
@@ -264,17 +262,15 @@ public class GridBuildingSystem : MonoBehaviour
                     if (currentBelt.NextPosition == neighbourBelt.Origin)
                     {
                         var nList = neighbourBelt.GetNeighbourBelt();
-                        var beltV = neighbourBelt.GetComponentInChildren<ConveyorBeltVisualController>();
-
                         if (nList.Count > 0)
                         {
-                            var dir = beltV.GetVisualDirection(neighbourBelt.Dir, nList[0].Dir);
-                            beltV.SetVisualDirection(dir);
+                            var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, nList[0].Dir);
+                            neighbourBelt.BeltVisual.SetVisualDirection(dir);
                         }
                         else
                         {
-                            if (beltV.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
-                                beltV.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
+                            if (neighbourBelt.BeltVisual.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
+                                neighbourBelt.BeltVisual.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
                         }
                     }
                 }

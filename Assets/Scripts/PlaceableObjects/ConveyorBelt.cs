@@ -1,14 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using GridSystem;
 using UnityEngine;
 
 public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 {
-    private Tile _itemSendingTile;
-    private Vector2Int _gridPosition;
     public Vector2Int NextPosition { get; private set; }
     public Vector2Int PreviousPosition { get; private set; }
 
@@ -20,29 +16,65 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     private List<Vector3> _itemCarryList;
     private readonly Dictionary<int, Item> _indexItems = new();
 
+    private ConveyorBelt _itemSendingBelt;
+
+    // İtemi bir sonraki banda gönderirken hali hazırda o bandın item alıp almadığını kontrol için var.
+    private ConveyorBelt _itemTakenBelt;
+
     protected override void Setup()
     {
-        _gridPosition = Origin;
-
         PreviousPosition = Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1;
         NextPosition = Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir);
 
         BeltVisual = transform.GetComponentInChildren<ConveyorBeltVisualController>();
-        _itemSendingTile = Grid.GetGridObject(NextPosition);
 
         for (var i = 0; i < MaxItemCarryCount; i++)
             _indexItems.Add(i, null);
+
+        BeltVisual.OnUpdateVisualDirection += UpdateItemCarryList;
+        BeltVisual.OnUpdateVisualDirection += UpdateNextAndPreviousConveyorBelt;
     }
 
     private void Start()
     {
         UpdateItemCarryList();
+        UpdateNextAndPreviousConveyorBelt();
     }
 
-    public void UpdateItemCarryList()
+    private void UpdateNextAndPreviousConveyorBelt()
+    {
+        //Bant yönü değiştiğinde giriş çıkış bantlarını günceller.
+        //TODO: Bant gibi tüm item taşıyıcılar için yapılmalı.
+
+        if (GetNeighbourBelt().Count == 1)
+        {
+            GetNeighbourBelt()[0]._itemSendingBelt = this;
+            _itemTakenBelt = GetNeighbourBelt()[0];
+        }
+        else
+        {
+            var nBelt = GetNextConveyorBeltToDirection();
+            if (nBelt != null)
+            {
+                nBelt._itemSendingBelt = this;
+                _itemTakenBelt = nBelt;
+            }
+        }
+
+        if (Grid.GetGridObject(NextPosition)?.OwnedObjectBase is ConveyorBelt nextBelt &&
+            nextBelt._itemTakenBelt == null &&
+            !IsOppositeDirection(Dir, nextBelt.Dir))
+        {
+            _itemSendingBelt = nextBelt;
+            nextBelt._itemTakenBelt = this;
+        }
+    }
+    
+    private void UpdateItemCarryList()
     {
         _itemCarryList = GetCarryPositions();
     }
+
 
     public override void DestroySelf()
     {
@@ -52,6 +84,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         {
             var item = _items.Dequeue();
             item.DestroySelf();
+                
         }
     }
 
@@ -61,41 +94,37 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
         for (int i = 0; i < MaxItemCarryCount; i++)
         {
-            if (_indexItems[i] == null) continue;
+            var currentItem = _indexItems[i];
+            if (currentItem == null) continue;
 
-            var item = _indexItems[i];
+            // Öğeyi hedef konuma doğru hareket ettir
             var targetPosition = _itemCarryList[i];
+            currentItem.transform.position = Vector3.MoveTowards(currentItem.transform.position, targetPosition, 0.01f);
 
-            item.transform.position = Vector3.MoveTowards(item.transform.position, targetPosition, .01f);
+            // Hedef konuma ulaştığında
+            if (currentItem.transform.position != targetPosition) continue;
 
-            if (item.transform.position == targetPosition)
+            // Bir sonraki pozisyona taşı
+            if (i < MaxItemCarryCount - 1 && _indexItems[i + 1] == null)
             {
-                if (i < MaxItemCarryCount - 1 && _indexItems[i + 1] == null)
-                {
-                    _indexItems[i + 1] = item;
-                    _indexItems[i] = null;
-                }
-                else if (i == MaxItemCarryCount - 1)
-                {
-                    if (_itemSendingTile?.OwnedObjectBase is not IItemCarrier nextCarrier) return;
-                    if (nextCarrier.GetGridPosition().All(p => p != _itemSendingTile.GetGridPosition)) return;
+                _indexItems[i + 1] = currentItem;
+                _indexItems[i] = null;
+                continue;
+            }
 
-                    if (nextCarrier is ConveyorBelt conveyorBelt && conveyorBelt.Dir != Dir &&
-                        !CanTransferItem(Dir, conveyorBelt.BeltVisual.direction))
-                        return;
-                    
-                    if(nextCarrier is Splitter splitter && splitter.Dir != Dir)
-                        return;
-                    
-                    if (nextCarrier.TrySetWorldItem(item))
-                    {
-                        _items.Dequeue();
-                        _indexItems[i] = null;
-                    }
+            // Son pozisyona ulaşıldığında sonraki taşıyıcıya ilet
+            if (i == MaxItemCarryCount - 1 && _itemSendingBelt != null)
+            {
+                // Öğeyi sonraki taşıyıcıya gönder
+                if (_itemSendingBelt.TrySetWorldItem(currentItem))
+                {
+                    _items.Dequeue();
+                    _indexItems[i] = null;
                 }
             }
         }
     }
+
 
     public bool TrySetWorldItem(Item item)
     {
@@ -109,53 +138,57 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
     public IEnumerable<Vector2Int> GetGridPosition()
     {
-        return new[] { _gridPosition };
+        return new[] { Origin };
     }
 
-    private bool CanTransferItem(Dir currentDir, ConveyorBeltVisualController.BeltVisualDirection targetDirection)
+    private bool IsOppositeDirection(Dir currentDir, Dir targetDir)
     {
-        switch (currentDir)
+        return currentDir switch
         {
-            case Dir.Down:
-                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.DownLeft
-                    or ConveyorBeltVisualController.BeltVisualDirection.DownRight)
-                    return true;
-                break;
-            case Dir.Left:
-                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.LeftDown
-                    or ConveyorBeltVisualController.BeltVisualDirection.LeftUp)
-                    return true;
-                break;
-            case Dir.Up:
-                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.UpLeft
-                    or ConveyorBeltVisualController.BeltVisualDirection.UpRight)
-                    return true;
-                break;
-            case Dir.Right:
-                if (targetDirection is ConveyorBeltVisualController.BeltVisualDirection.RightDown
-                    or ConveyorBeltVisualController.BeltVisualDirection.RightUp)
-                    return true;
-                break;
-        }
-
-        return false;
+            Dir.Down => targetDir is Dir.Up,
+            Dir.Left => targetDir is Dir.Right,
+            Dir.Up => targetDir is Dir.Down,
+            Dir.Right => targetDir is Dir.Left,
+            _ => throw new ArgumentOutOfRangeException(nameof(currentDir), currentDir, null)
+        };
     }
 
-    public int GetNeighbourBeltCount()
+    private ConveyorBelt GetNextConveyorBeltToDirection()
     {
-        return GetNeighbourBelt().Count;
+        return BeltVisual.direction switch
+        {
+            ConveyorBeltVisualController.BeltVisualDirection.Flat => GetNeighbourBelt().
+                Find(b => b.Dir == Dir),
+            ConveyorBeltVisualController.BeltVisualDirection.DownRight => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Down),
+            ConveyorBeltVisualController.BeltVisualDirection.DownLeft => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Down),
+            ConveyorBeltVisualController.BeltVisualDirection.UpRight => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Up),
+            ConveyorBeltVisualController.BeltVisualDirection.UpLeft => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Up),
+            ConveyorBeltVisualController.BeltVisualDirection.RightDown => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Right),
+            ConveyorBeltVisualController.BeltVisualDirection.RightUp => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Right),
+            ConveyorBeltVisualController.BeltVisualDirection.LeftDown => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Left),
+            ConveyorBeltVisualController.BeltVisualDirection.LeftUp => GetNeighbourBelt()
+                .Find(b => b.Dir == Dir.Left),
+            _ => null
+        };
     }
 
     public List<ConveyorBelt> GetNeighbourBelt()
     {
         var pathfindingSystem = GridBuildingSystem.Instance.PathfindingSystem;
         var list = new List<ConveyorBelt>();
-        
+
         foreach (var tile in pathfindingSystem.GetNeighbour(GetTile))
         {
             if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
             {
-                if (neighbourBelt.NextPosition == Origin)
+                if (neighbourBelt.NextPosition == Origin && !IsOppositeDirection(Dir, neighbourBelt.Dir))
                 {
                     if (!list.Contains(neighbourBelt))
                         list.Add(neighbourBelt);
@@ -165,10 +198,11 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
         return list;
     }
+
     private List<Vector3> GetCarryPositions()
     {
         var list = new List<Vector3>();
-        var basePosition = Grid.GetWorldPosition(_gridPosition) + Grid.GetCellSizeOffset();
+        var basePosition = Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
         var a = Grid.GetCellSize() / MaxItemCarryCount;
 
         switch (BeltVisual.direction)

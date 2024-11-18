@@ -16,6 +16,8 @@ public class ConveyorBeltVisualController : MonoBehaviour
         LeftUp
     }
 
+    public event Action OnUpdateVisualDirection;
+    
     private readonly List<Transform> _visualList = new();
     public BeltVisualDirection direction { get; private set; }
 
@@ -29,7 +31,7 @@ public class ConveyorBeltVisualController : MonoBehaviour
     {
         direction = dir;
         ChangeVisual(direction);
-        GetComponentInParent<ConveyorBelt>()?.UpdateItemCarryList();
+        OnUpdateVisualDirection?.Invoke();
         //Debug.Log(dir);
     }
 
