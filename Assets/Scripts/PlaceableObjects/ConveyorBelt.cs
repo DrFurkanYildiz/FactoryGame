@@ -1,13 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using GridSystem;
 using UnityEngine;
 
 public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 {
-    public Vector2Int NextPosition { get; private set; }
-    public Vector2Int PreviousPosition { get; private set; }
+    //public Vector2Int NextPosition { get; private set; }
+    //public Vector2Int PreviousPosition { get; private set; }
 
     private readonly Queue<Item> _items = new();
     private const int MaxItemCarryCount = 3;
@@ -17,19 +18,25 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     private List<Vector3> _itemCarryList;
     private readonly Dictionary<int, Item> _indexItems = new();
 
-    private ConveyorBelt _itemSendingBelt;
-    //public IItemCarrier SendingItemCarrier { get; set; }
-    
+    //private ConveyorBelt _itemSendingBelt;
 
-    // İtemi bir sonraki banda gönderirken hali hazırda o bandın item alıp almadığını kontrol için var.
-    public ConveyorBelt ItemTakenBelt { get; private set; }
+    public List<Vector2Int> InputCoordinates { get; set; } = new();
+    public List<Vector2Int> OutputCoordinates { get; set; } = new();
+    public List<IItemCarrier> SendingItemCarriers { get; set; } = new();
+    public List<IItemCarrier> TakenItemCarriers { get; set; } = new();
+    public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)
+    {
+        return Dir;
+    }
 
-    private int debugNei;
+
+    private int TakenItemCarriersCount;
+    private int SendingItemCarriersCount;
 
     protected override void Setup()
     {
-        PreviousPosition = Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1;
-        NextPosition = Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir);
+        OutputCoordinates.Add(Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir));
+        InputCoordinates.Add(Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1);
 
         BeltVisual = transform.GetComponentInChildren<ConveyorBeltVisualController>();
 
@@ -45,24 +52,64 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         UpdateItemCarryList();
         UpdateNextAndPreviousConveyorBelt();
     }
-
+    private Vector2Int Getas()
+    {
+        return BeltVisual.direction switch
+        {
+            ConveyorBeltVisualController.BeltVisualDirection.Flat => Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1,
+            ConveyorBeltVisualController.BeltVisualDirection.RightDown => Origin - Vector2Int.right,
+            ConveyorBeltVisualController.BeltVisualDirection.LeftDown => Origin - Vector2Int.left,
+            ConveyorBeltVisualController.BeltVisualDirection.DownRight => Origin - Vector2Int.down,
+            ConveyorBeltVisualController.BeltVisualDirection.DownLeft => Origin - Vector2Int.down,
+            ConveyorBeltVisualController.BeltVisualDirection.LeftUp => Origin - Vector2Int.left,
+            ConveyorBeltVisualController.BeltVisualDirection.RightUp => Origin - Vector2Int.right,
+            ConveyorBeltVisualController.BeltVisualDirection.UpRight => Origin - Vector2Int.up,
+            ConveyorBeltVisualController.BeltVisualDirection.UpLeft => Origin - Vector2Int.up,
+            _ => Vector2Int.zero
+        };
+    }
     private void UpdateNextAndPreviousConveyorBelt()
     {
         //Bant yönü değiştiğinde giriş çıkış bantlarını günceller.
-        //TODO: Bant gibi tüm item taşıyıcılar için yapılmalı.
+        //TODO: Bant gibi tüm item taşıyıcılar için yapılmalı. Şu haliyle hayli hatalı giriş çıkış kordinatlarını yanlış hesaplıyor.İlk burayı düzelt
 
-        if (GetItemCanBeSendNeighbourBeltList().Count == 1)
+        if (GetNeighborCarriersThatCanSend().Count == 1)
         {
-            GetItemCanBeSendNeighbourBeltList()[0]._itemSendingBelt = this;
-            ItemTakenBelt = GetItemCanBeSendNeighbourBeltList()[0];
+            var preCarrier = GetNeighborCarriersThatCanSend()[0];
+            if (!preCarrier.SendingItemCarriers.Contains(this))
+                preCarrier.SendingItemCarriers.Add(this);
+            if (!TakenItemCarriers.Contains(preCarrier))
+                TakenItemCarriers.Add(preCarrier);
         }
         else
         {
-            var nBelt = GetNextConveyorBeltToDirection();
-            if (nBelt != null)
+            foreach (var carrier in GetNeighborCarriersThatCanSend())
             {
-                nBelt._itemSendingBelt = this;
-                ItemTakenBelt = nBelt;
+                if (carrier.OutputCoordinates.Contains(Getas()))
+                {
+                    if (!carrier.SendingItemCarriers.Contains(this))
+                        carrier.SendingItemCarriers.Add(this);
+                    if (!TakenItemCarriers.Contains(carrier))
+                        TakenItemCarriers.Add(carrier);
+                }
+            }
+        }
+
+
+
+/*
+        if (GetNeighborConveyorBeltsThatCanSend().Count == 1)
+        {
+            GetNeighborConveyorBeltsThatCanSend()[0]._itemSendingBelt = this;
+            ItemTakenBelt = GetNeighborConveyorBeltsThatCanSend()[0];
+        }
+        else
+        {
+            var pBelt = GetConveyorBeltSendingItems();
+            if (pBelt != null)
+            {
+                pBelt._itemSendingBelt = this;
+                ItemTakenBelt = pBelt;
             }
         }
 
@@ -73,6 +120,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
             _itemSendingBelt = nextBelt;
             nextBelt.ItemTakenBelt = this;
         }
+        */
     }
     
     private void UpdateItemCarryList()
@@ -95,7 +143,8 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
     private void Update()
     {
-        debugNei = GetItemCanBeSendNeighbourBeltList().Count;
+        SendingItemCarriersCount = SendingItemCarriers.Count;
+        TakenItemCarriersCount = TakenItemCarriers.Count;
         
         if (_items.Count == 0) return;
 
@@ -118,7 +167,19 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
                 _indexItems[i] = null;
                 continue;
             }
-
+            
+            // Son pozisyona ulaşıldığında sonraki taşıyıcıya ilet
+            if (i == MaxItemCarryCount - 1 && SendingItemCarriers.Count > 0)
+            {
+                // Öğeyi sonraki taşıyıcıya gönder
+                if (SendingItemCarriers[0].TrySetWorldItem(currentItem))
+                {
+                    _items.Dequeue();
+                    _indexItems[i] = null;
+                }
+            }
+            
+            /*
             // Son pozisyona ulaşıldığında sonraki taşıyıcıya ilet
             if (i == MaxItemCarryCount - 1 && _itemSendingBelt != null)
             {
@@ -129,6 +190,8 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
                     _indexItems[i] = null;
                 }
             }
+            */
+            
         }
     }
 
@@ -148,6 +211,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         return new[] { Origin };
     }
 
+
     private bool IsOppositeDirection(Dir currentDir, Dir targetDir)
     {
         return currentDir switch
@@ -160,33 +224,79 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         };
     }
 
-    private ConveyorBelt GetNextConveyorBeltToDirection()
+    /// <summary>
+    /// Visual yönümüze göre item gönderebilen uygun yönlü conveyor belti getirir.
+    /// </summary>
+    /// <returns></returns>
+    private ConveyorBelt GetConveyorBeltSendingItems()
     {
         return BeltVisual.direction switch
         {
-            ConveyorBeltVisualController.BeltVisualDirection.Flat => GetItemCanBeSendNeighbourBeltList().
+            ConveyorBeltVisualController.BeltVisualDirection.Flat => GetNeighborConveyorBeltsThatCanSend().
                 Find(b => b.Dir == Dir),
-            ConveyorBeltVisualController.BeltVisualDirection.DownRight => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.DownRight => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Down),
-            ConveyorBeltVisualController.BeltVisualDirection.DownLeft => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.DownLeft => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Down),
-            ConveyorBeltVisualController.BeltVisualDirection.UpRight => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.UpRight => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Up),
-            ConveyorBeltVisualController.BeltVisualDirection.UpLeft => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.UpLeft => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Up),
-            ConveyorBeltVisualController.BeltVisualDirection.RightDown => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.RightDown => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Right),
-            ConveyorBeltVisualController.BeltVisualDirection.RightUp => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.RightUp => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Right),
-            ConveyorBeltVisualController.BeltVisualDirection.LeftDown => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.LeftDown => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Left),
-            ConveyorBeltVisualController.BeltVisualDirection.LeftUp => GetItemCanBeSendNeighbourBeltList()
+            ConveyorBeltVisualController.BeltVisualDirection.LeftUp => GetNeighborConveyorBeltsThatCanSend()
                 .Find(b => b.Dir == Dir.Left),
             _ => null
         };
     }
+    
+    /// <summary>
+    /// Bize item gönderebilecek item taşıyıcıların listesi. Yani bize bakan taşıyıcılar.
+    /// </summary>
+    /// <returns></returns>
+    private List<IItemCarrier> GetNeighborCarriersThatCanSend()
+    {
+        var list = new List<IItemCarrier>();
 
-    public List<ConveyorBelt> GetItemCanBeSendNeighbourBeltList()
+        foreach (var tile in CurrentTile.GetNeighbourList(Grid))
+        {
+            switch (tile.OwnedObjectBase)
+            {
+                case ConveyorBelt neighbourBelt:
+                {
+                    if (neighbourBelt.OutputCoordinates.Contains(Origin) && !IsOppositeDirection(Dir, neighbourBelt.Dir))
+                    {
+                        if (!list.Contains(neighbourBelt))
+                            list.Add(neighbourBelt);
+                    }
+
+                    break;
+                }
+                case Splitter neighbourSplitter:
+                    var nDir = PlaceableObjectBaseSo.GetDir(neighbourSplitter.Origin, Origin);
+                    if (neighbourSplitter.OutputCoordinates.Contains(Origin) && !IsOppositeDirection(nDir, Dir))
+                    {
+                        if (!list.Contains(neighbourSplitter))
+                            list.Add(neighbourSplitter);
+                    }
+                    break;
+            }
+        }
+
+        return list;
+    }
+
+    public List<ConveyorBelt> GetNeighborConveyorBeltsThatCanSend()
+    {
+        return GetNeighborCarriersThatCanSend().OfType<ConveyorBelt>().ToList();
+    }
+
+    /*
+    public List<ConveyorBelt> GetNeighborConveyorBeltsThatCanSend()
     {
         var list = new List<ConveyorBelt>();
 
@@ -204,6 +314,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
         return list;
     }
+    */
 
     private List<Vector3> GetCarryPositions()
     {

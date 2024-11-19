@@ -7,6 +7,16 @@ public class Merger : PlaceableObjectBase, IItemCarrier
     [ShowInInspector] private readonly Queue<Item> _items = new();
     private const int MaxItemCarryCount = 3;
 
+    public List<Vector2Int> OutputCoordinates { get; set; }
+    public List<Vector2Int> InputCoordinates { get; set; }
+    public List<IItemCarrier> SendingItemCarriers { get; set; }
+    public List<IItemCarrier> TakenItemCarriers { get; set; }
+    public Dir GetDirectionAccordingOurCoordinate(Vector2Int currentCoordinate)
+    {
+        throw new System.NotImplementedException();
+    }
+
+
     private void Update()
     {
         if (_items.Count == 0) return;
@@ -34,4 +44,5 @@ public class Merger : PlaceableObjectBase, IItemCarrier
     {
         return new[] { Origin };
     }
+
 }

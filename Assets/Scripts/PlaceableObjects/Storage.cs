@@ -14,6 +14,17 @@ public class Storage : PlaceableObjectBase, IItemCarrier
     private Item _item;
     private ItemSo _itemSo;
     
+    
+    public List<Vector2Int> OutputCoordinates { get; set; }
+    public List<Vector2Int> InputCoordinates { get; set; }
+    public List<IItemCarrier> SendingItemCarriers { get; set; }
+    public List<IItemCarrier> TakenItemCarriers { get; set; }
+    public Dir GetDirectionAccordingOurCoordinate(Vector2Int currentCoordinate)
+    {
+        throw new NotImplementedException();
+    }
+
+
     [Serializable]
     public enum StorageType
     {
@@ -100,6 +111,7 @@ public class Storage : PlaceableObjectBase, IItemCarrier
     {
         return new[] { _gatePosition };
     }
+
 
     public Vector3 GetCarryItemWorldPosition(Item item)
     {
