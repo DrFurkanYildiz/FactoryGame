@@ -44,23 +44,6 @@ namespace GridSystem
         {
             fCost = gCost + hCost;
         }
-
-        public List<ConveyorBelt> GetNeighbourConveyorBelt(PathfindingSystem<Tile> pathfindingSystem)
-        {
-            var list = new List<ConveyorBelt>();
-            foreach (var tile in pathfindingSystem.GetNeighbour(this))
-            {
-                if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
-                {
-                    if (neighbourBelt.NextPosition == GetGridPosition)
-                    {
-                        if (!list.Contains(neighbourBelt))
-                            list.Add(neighbourBelt);
-                    }
-                }
-            }
-
-            return list;
-        }
+        
     }
 }

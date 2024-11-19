@@ -26,7 +26,7 @@ public abstract class PlaceableObjectBase : MonoBehaviour
     
     public PlaceableObjectBase TunnelPlaceableObjectBase { get; set; }
     public ConveyorTunnelType ConveyorTunnelType { get; set; }
-    public Tile GetTile => Grid.GetGridObject(Origin);
+    public Tile CurrentTile => Grid.GetGridObject(Origin);
 
     protected virtual void Setup() {}
     public List<Vector2Int> GetGridPositionList() => placeableObjectSo.GetGridPositionList(Origin, Dir);

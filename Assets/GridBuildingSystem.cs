@@ -24,8 +24,6 @@ public class GridBuildingSystem : MonoBehaviour
     private ConveyorBeltVisualController.BeltVisualDirection _beltVisualDirection;
     private Vector2Int _conveyorBeltChangedVisualCoordinate;
 
-    public PathfindingSystem<Tile> PathfindingSystem { get; private set; }
-
     private Action<PlaceableType> _onSelectedPlacedObject;
 
     private bool _rotateLocked;
@@ -35,7 +33,6 @@ public class GridBuildingSystem : MonoBehaviour
     {
         Instance = this;
         _grid = InitializeGrid(20, 20, 1f);
-        PathfindingSystem = new PathfindingSystem<Tile>(_grid);
 
         _onSelectedPlacedObject += SelectObject;
     }
@@ -88,7 +85,14 @@ public class GridBuildingSystem : MonoBehaviour
             }
 
             var currentTile = _grid.GetGridObject(mouseGridPosition);
-            var list = currentTile.GetNeighbourConveyorBelt(PathfindingSystem);
+            
+            var list = currentTile
+                .GetNeighbourList(_grid)
+                .Where(tile => tile.OwnedObjectBase is ConveyorBelt neighbourBelt &&
+                               neighbourBelt.NextPosition == currentTile.GetGridPosition)
+                .Select(tile => (ConveyorBelt)tile.OwnedObjectBase)
+                .ToList();
+
 
             switch (list.Count)
             {
@@ -198,6 +202,11 @@ public class GridBuildingSystem : MonoBehaviour
             if (_placeableObjectSo != null)
             {
                 var mousePosition = Mouse3D.GetMouseWorldPosition();
+                var currentTile = _grid.GetGridObject(mousePosition);
+                
+                //Belt üzerine belt koyabilmek için!
+                if (currentTile is { OwnedObjectBase: ConveyorBelt belt })
+                    DestroyPlacedObject(belt);
                 
                 ObjectPlacement(_grid, _placeableObjectSo, mousePosition, _dir, out var placedObject);
 
@@ -205,16 +214,15 @@ public class GridBuildingSystem : MonoBehaviour
                 {
                     currentBelt.transform.SetParent(GameObject.Find("Belts").transform);
                     currentBelt.BeltVisual.SetVisualDirection(_beltVisualDirection);
-                    _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
 
 
-                    foreach (var tile in PathfindingSystem.GetNeighbour(_grid.GetGridObject(mousePosition)))
+                    foreach (var tile in currentTile.GetNeighbourList(_grid))
                     {
                         if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
                         {
                             if (currentBelt.NextPosition == neighbourBelt.Origin)
                             {
-                                if (neighbourBelt.GetNeighbourBelt().Count == 1)
+                                if (neighbourBelt.GetItemCanBeSendNeighbourBeltList().Count == 1)
                                 {
                                     var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, _dir);
                                     neighbourBelt.BeltVisual.SetVisualDirection(dir);
@@ -255,16 +263,20 @@ public class GridBuildingSystem : MonoBehaviour
 
         if (placedObject is ConveyorBelt currentBelt)
         {
-            foreach (var tile in PathfindingSystem.GetNeighbour(placedObject.GetTile))
+            foreach (var tile in placedObject.CurrentTile.GetNeighbourList(_grid))
             {
                 if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
                 {
                     if (currentBelt.NextPosition == neighbourBelt.Origin)
                     {
-                        var nList = neighbourBelt.GetNeighbourBelt();
+                        var nList = neighbourBelt.GetItemCanBeSendNeighbourBeltList();
                         if (nList.Count > 0)
                         {
-                            var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, nList[0].Dir);
+                            var preBelt = nList.Contains(neighbourBelt.ItemTakenBelt)
+                                ? neighbourBelt.ItemTakenBelt
+                                : nList[0];
+                            
+                            var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, preBelt.Dir);
                             neighbourBelt.BeltVisual.SetVisualDirection(dir);
                         }
                         else
@@ -342,12 +354,14 @@ public class GridBuildingSystem : MonoBehaviour
         return Quaternion.Euler(0, PlaceableObjectSo.GetRotationAngle(dir), 0);
     }
 
+    /*
     private List<Vector3> FindBeltPath(Vector2Int start, Vector2Int end)
     {
         var path = PathfindingSystem.FindPath(_grid.GetWorldPosition(start), _grid.GetWorldPosition(end), false);
         if (path == null) Debug.Log("Path not found!"); //Debug.DrawLine(path[i], path[i + 1], Color.red, 1f);
         return path;
     }
+    */
 
     private void ConveyorTunnelAssignment(PlaceableObjectBase placeableObjectBase)
     {

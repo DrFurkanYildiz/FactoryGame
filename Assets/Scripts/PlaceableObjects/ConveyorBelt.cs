@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using GridSystem;
 using UnityEngine;
 
 public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
@@ -17,9 +18,13 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     private readonly Dictionary<int, Item> _indexItems = new();
 
     private ConveyorBelt _itemSendingBelt;
+    //public IItemCarrier SendingItemCarrier { get; set; }
+    
 
     // İtemi bir sonraki banda gönderirken hali hazırda o bandın item alıp almadığını kontrol için var.
-    private ConveyorBelt _itemTakenBelt;
+    public ConveyorBelt ItemTakenBelt { get; private set; }
+
+    private int debugNei;
 
     protected override void Setup()
     {
@@ -46,10 +51,10 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         //Bant yönü değiştiğinde giriş çıkış bantlarını günceller.
         //TODO: Bant gibi tüm item taşıyıcılar için yapılmalı.
 
-        if (GetNeighbourBelt().Count == 1)
+        if (GetItemCanBeSendNeighbourBeltList().Count == 1)
         {
-            GetNeighbourBelt()[0]._itemSendingBelt = this;
-            _itemTakenBelt = GetNeighbourBelt()[0];
+            GetItemCanBeSendNeighbourBeltList()[0]._itemSendingBelt = this;
+            ItemTakenBelt = GetItemCanBeSendNeighbourBeltList()[0];
         }
         else
         {
@@ -57,16 +62,16 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
             if (nBelt != null)
             {
                 nBelt._itemSendingBelt = this;
-                _itemTakenBelt = nBelt;
+                ItemTakenBelt = nBelt;
             }
         }
 
         if (Grid.GetGridObject(NextPosition)?.OwnedObjectBase is ConveyorBelt nextBelt &&
-            nextBelt._itemTakenBelt == null &&
+            nextBelt.ItemTakenBelt == null &&
             !IsOppositeDirection(Dir, nextBelt.Dir))
         {
             _itemSendingBelt = nextBelt;
-            nextBelt._itemTakenBelt = this;
+            nextBelt.ItemTakenBelt = this;
         }
     }
     
@@ -90,6 +95,8 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
 
     private void Update()
     {
+        debugNei = GetItemCanBeSendNeighbourBeltList().Count;
+        
         if (_items.Count == 0) return;
 
         for (int i = 0; i < MaxItemCarryCount; i++)
@@ -157,34 +164,33 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
     {
         return BeltVisual.direction switch
         {
-            ConveyorBeltVisualController.BeltVisualDirection.Flat => GetNeighbourBelt().
+            ConveyorBeltVisualController.BeltVisualDirection.Flat => GetItemCanBeSendNeighbourBeltList().
                 Find(b => b.Dir == Dir),
-            ConveyorBeltVisualController.BeltVisualDirection.DownRight => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.DownRight => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Down),
-            ConveyorBeltVisualController.BeltVisualDirection.DownLeft => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.DownLeft => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Down),
-            ConveyorBeltVisualController.BeltVisualDirection.UpRight => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.UpRight => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Up),
-            ConveyorBeltVisualController.BeltVisualDirection.UpLeft => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.UpLeft => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Up),
-            ConveyorBeltVisualController.BeltVisualDirection.RightDown => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.RightDown => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Right),
-            ConveyorBeltVisualController.BeltVisualDirection.RightUp => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.RightUp => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Right),
-            ConveyorBeltVisualController.BeltVisualDirection.LeftDown => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.LeftDown => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Left),
-            ConveyorBeltVisualController.BeltVisualDirection.LeftUp => GetNeighbourBelt()
+            ConveyorBeltVisualController.BeltVisualDirection.LeftUp => GetItemCanBeSendNeighbourBeltList()
                 .Find(b => b.Dir == Dir.Left),
             _ => null
         };
     }
 
-    public List<ConveyorBelt> GetNeighbourBelt()
+    public List<ConveyorBelt> GetItemCanBeSendNeighbourBeltList()
     {
-        var pathfindingSystem = GridBuildingSystem.Instance.PathfindingSystem;
         var list = new List<ConveyorBelt>();
 
-        foreach (var tile in pathfindingSystem.GetNeighbour(GetTile))
+        foreach (var tile in CurrentTile.GetNeighbourList(Grid))
         {
             if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
             {
