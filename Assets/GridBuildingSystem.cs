@@ -29,6 +29,7 @@ public class GridBuildingSystem : MonoBehaviour
     private bool _rotateLocked;
     private int _lockedIndex;
 
+
     private void Awake()
     {
         Instance = this;
@@ -70,71 +71,74 @@ public class GridBuildingSystem : MonoBehaviour
             {
                 _rotateLocked = false;
                 _lockedIndex = 0;
-                return;
             }
-            
-            
-            var mouseGridPosition = _grid.GetCoordinate(Mouse3D.GetMouseWorldPosition());
-            var belt = _visual.GetComponent<ConveyorBeltVisualController>();
-
-            if (mouseGridPosition != _conveyorBeltChangedVisualCoordinate)
+            else
             {
-                if (belt.direction is not ConveyorBeltVisualController.BeltVisualDirection.Flat)
-                    belt.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
-                _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
+                var mouseGridPosition = _grid.GetCoordinate(Mouse3D.GetMouseWorldPosition());
+                var belt = _visual.GetComponent<ConveyorBeltVisualController>();
+                
+                if(mouseGridPosition != _conveyorBeltChangedVisualCoordinate)
+                {
+                    if (belt.direction is not ConveyorBeltVisualController.BeltVisualDirection.Flat)
+                        belt.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
+                    _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
+                }
+
+                CheckConveyorBeltVisual(belt, mouseGridPosition);
             }
-
-            var currentTile = _grid.GetGridObject(mouseGridPosition);
-            
-            var list = currentTile
-                .GetNeighbourList(_grid)
-                .Where(tile => tile.OwnedObjectBase is IItemCarrier neighbourCarrier &&
-                               neighbourCarrier.OutputCoordinates.Contains(currentTile.GetGridPosition))
-                .Select(tile => (IItemCarrier)tile.OwnedObjectBase)
-                .ToList();
-
-            switch (list.Count)
-            {
-                case 1:
-                    UpdateBeltVisual(list, 0);
-                    break;
-                case 2:
-                    
-                    var previousPosition = mouseGridPosition + PlaceableObjectBaseSo.GetDirForwardVector(_dir) * -1;
-                    var nextPosition = mouseGridPosition + PlaceableObjectBaseSo.GetDirForwardVector(_dir);
-                    var a = list.Count(b =>
-                        b.OutputCoordinates.Contains(previousPosition) || b.OutputCoordinates.Contains(nextPosition));
-                    
-                    if (a <= 1)
-                    {
-                        _rotateLocked = true;
-                        if (Input.GetKeyDown(KeyCode.R))
-                            _lockedIndex = (_lockedIndex + 1) % list.Count;
-
-                        UpdateBeltVisual(list, _lockedIndex);
-                        return;
-                    }
-
-                    goto case 1;
-
-                case 3: goto case 2;
-            }
-            
-            _rotateLocked = false;
-            _lockedIndex = 0;
         }
     }
-    private void UpdateBeltVisual(IReadOnlyList<IItemCarrier> carriers, int i)
-    {
-        var mouseGridPosition = _grid.GetCoordinate(Mouse3D.GetMouseWorldPosition());
-        var belt = _visual.GetComponent<ConveyorBeltVisualController>();
-        var dir = belt.GetVisualDirection(_dir, carriers[i].GetDirectionAccordingOurCoordinate(mouseGridPosition));
-        if (dir == belt.direction) return;
 
-        belt.SetVisualDirection(dir);
-        _beltVisualDirection = dir;
-        _conveyorBeltChangedVisualCoordinate = mouseGridPosition;
+    private void CheckConveyorBeltVisual(ConveyorBeltVisualController belt, Vector2Int mouseGridPosition)
+    {
+        var currentTile = _grid.GetGridObject(mouseGridPosition);
+            
+        var list = currentTile
+            .GetNeighbourList(_grid)
+            .Where(tile => tile.OwnedObjectBase is IItemCarrier neighbourCarrier &&
+                           neighbourCarrier.OutputCoordinates.Contains(mouseGridPosition))
+            .Select(tile => (IItemCarrier)tile.OwnedObjectBase)
+            .ToList();
+
+        switch (list.Count)
+        {
+            case 1:
+                UpdateBeltVisual(list, 0);
+                break;
+            case 2:
+                var lookCount = list.Count(c =>
+                    c.GetDirectionAccordingOurCoordinate(mouseGridPosition) == _dir ||
+                    c.GetDirectionAccordingOurCoordinate(mouseGridPosition) ==
+                    PlaceableObjectBaseSo.GetOppositeDirection(_dir));
+                    
+                if (lookCount <= 1)
+                {
+                    _rotateLocked = true;
+                    if (Input.GetKeyDown(KeyCode.R))
+                        _lockedIndex = (_lockedIndex + 1) % list.Count;
+                    UpdateBeltVisual(list, _lockedIndex);
+                    return;
+                }
+                goto case 1;
+            case 3: goto case 2;
+        }
+            
+        _rotateLocked = false;
+        _lockedIndex = 0;
+        return;
+
+
+        void UpdateBeltVisual(IReadOnlyList<IItemCarrier> carriers, int i)
+        {
+            var dir = belt.GetVisualDirection(_dir, carriers[i].GetDirectionAccordingOurCoordinate(mouseGridPosition));
+            if (dir == belt.direction) return;
+
+            belt.SetVisualDirection(dir);
+            _beltVisualDirection = dir;
+            _conveyorBeltChangedVisualCoordinate = mouseGridPosition;
+        }
     }
+    
     
     private void LateUpdate()
     {
@@ -197,46 +201,59 @@ public class GridBuildingSystem : MonoBehaviour
 
     private void HandlePlacement()
     {
-        if (Input.GetMouseButton(0))
+        if (_placeableObjectSo != null)
         {
-            if (_placeableObjectSo != null)
+            var mousePosition = Mouse3D.GetMouseWorldPosition();
+            var currentTile = _grid.GetGridObject(mousePosition);
+            
+            if (Input.GetMouseButtonDown(0))
             {
-                var mousePosition = Mouse3D.GetMouseWorldPosition();
-                var currentTile = _grid.GetGridObject(mousePosition);
-                
-                /*
-                //Belt üzerine belt koyabilmek için!
+                //Belt üzerine belt koyabilmek için! Basılı tutulduğunda yenisi oluşmaması için
                 if (currentTile is { OwnedObjectBase: ConveyorBelt belt })
                     DestroyPlacedObject(belt);
-                
-                */
+            }
+
+            if (Input.GetMouseButton(0))
+            {
                 ObjectPlacement(_grid, _placeableObjectSo, mousePosition, _dir, out var placedObject);
 
-                if (placedObject is ConveyorBelt currentBelt)
+                if (placedObject is IItemCarrier currentCarrier)
                 {
-                    currentBelt.transform.SetParent(GameObject.Find("Belts").transform);
-                    currentBelt.BeltVisual.SetVisualDirection(_beltVisualDirection);
-
-
+                    if (currentCarrier is ConveyorBelt currentBelt)
+                    {
+                        currentBelt.transform.SetParent(GameObject.Find("Belts").transform);
+                        currentBelt.BeltVisual.SetVisualDirection(_beltVisualDirection);
+                        _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
+                    }
+                    
+                    /*
+                    if (currentCarrier is ConveyorTunnel)
+                    {
+                        ConveyorTunnelAssignment(placedObject);
+                    }
+                    */
+                    
+                    // Eğer koyulan bandın yanında bir taşıyıcıya bağlı olmayan bir bant varsa bize bağlanması için yönünü değiştir.
+                    
                     foreach (var tile in currentTile.GetNeighbourList(_grid))
                     {
                         if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
                         {
-                            if (currentBelt.OutputCoordinates.Contains(neighbourBelt.Origin))
+                            if (currentCarrier.OutputCoordinates.Contains(neighbourBelt.Origin))
                             {
-                                if (neighbourBelt.GetNeighborConveyorBeltsThatCanSend().Count == 1)
+                                if (neighbourBelt.GetNeighborCarriersThatCanSend().Count == 1)
                                 {
-                                    var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, _dir);
+                                    var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir,
+                                        currentCarrier.GetDirectionAccordingOurCoordinate(currentTile.GetGridPosition));
                                     neighbourBelt.BeltVisual.SetVisualDirection(dir);
                                 }
                             }
                         }
                     }
-                }
-
-                if (placedObject is ConveyorTunnel)
-                {
-                    ConveyorTunnelAssignment(placedObject);
+                    
+                    
+                    
+                    
                 }
             }
         }
@@ -256,115 +273,39 @@ public class GridBuildingSystem : MonoBehaviour
 
     private void DestroyPlacedObject(PlaceableObjectBase placedObject)
     {
-
-        // Clear the grid position data
         var gridPositionList = placedObject.GetGridPositionList();
         foreach (var gridPosition in gridPositionList)
             _grid.GetGridObject(gridPosition.x, gridPosition.y).ClearPlacedObject();
 
-        
-        //TODO: Item Carier e göre bu bölümde düzeltilecek
-        
-        
-        if (placedObject is IItemCarrier itemCarrier)
-        {
-            foreach (var tile in placedObject.CurrentTile.GetNeighbourList(_grid))
-            {
-                if (tile.OwnedObjectBase is IItemCarrier neighbourCarrier)
-                {
-                    //Henüz splitter taken ve sending kaydedilmediği için hata verebilir
-                    if (neighbourCarrier.TakenItemCarriers.Contains(itemCarrier))
-                        neighbourCarrier.TakenItemCarriers.Remove(itemCarrier);
-                    if (neighbourCarrier.SendingItemCarriers.Contains(itemCarrier))
-                        neighbourCarrier.SendingItemCarriers.Remove(itemCarrier);
 
-                    if (neighbourCarrier is ConveyorBelt neighbourBelt)
-                    {
-                        var nList = neighbourBelt.GetNeighborConveyorBeltsThatCanSend();
-                        if (nList.Count > 0)
-                        {
-                            //bakanlardan biri silinince yön değiştirme hatası
-                            //için zaten bir yöne bakıyor ve baktığı silinmediyse yön değiştirmemesi için var.
-                            /*
-                            var preBelt = neighbourCarrier.TakenItemCarriers.Contains(neighbourBelt.ItemTakenBelt)
-                                ? neighbourBelt.ItemTakenBelt
-                                : neighbourBelt;
-                                */
-                            //nList[0] yerine hangi belte bağlıysa o gelecek
-                            
-                            var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, nList[0].Dir);
-                            neighbourBelt.BeltVisual.SetVisualDirection(dir);
-                        }
-                        else
-                        {
-                            if (neighbourBelt.BeltVisual.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
-                                neighbourBelt.BeltVisual.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
-                        }
-                        
-                        /*
-                        if (neighbourCarrier.TakenItemCarriers.Count > 0)
-                        {
-                            var preBelt = neighbourCarrier.TakenItemCarriers.Contains(neighbourBelt.ItemTakenBelt)
-                                ? neighbourBelt.ItemTakenBelt
-                                : neighbourBelt;
-                            
-                            var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, preBelt.Dir);
-                            neighbourBelt.BeltVisual.SetVisualDirection(dir);
-                            
-                            Debug.Log("Var", neighbourBelt.gameObject);
-                        }
-                        else
-                        {
-                            if (neighbourBelt.BeltVisual.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
-                                neighbourBelt.BeltVisual.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
-                            
-                            
-                            Debug.Log("Yok");
-                        }
-                        
-                        */
-                    }
-                }
-            }
-        }
-        
-        
-        placedObject.DestroySelf();
-        
-        
-        /*
-        if (placedObject is ConveyorBelt currentBelt)
+        if (placedObject is IItemCarrier)
         {
-            foreach (var tile in placedObject.CurrentTile.GetNeighbourList(_grid))
+            foreach (var nTile in placedObject.CurrentTile.GetNeighbourList(_grid))
             {
-                if (tile.OwnedObjectBase is ConveyorBelt neighbourBelt)
+                //Belt dışında kimse yön değiştirmiyor!!!
+                if (nTile.OwnedObjectBase is ConveyorBelt nBelt)
                 {
-                    if (currentBelt.OutputCoordinates.Contains(neighbourBelt.Origin))
+                    var nList = nBelt.GetNeighborCarriersThatCanSend();
+                    if (nList.Count <= 0)
                     {
-                        var nList = neighbourBelt.GetNeighborConveyorBeltsThatCanSend();
-                        if (nList.Count > 0)
-                        {
-                            //bakanlardan biri silinince yön değiştirme hatası
-                            //için zaten bir yöne bakıyor ve baktığı silinmediyse yön değiştirmemesi için var.
-                            var preBelt = nList.Contains(neighbourBelt.ItemTakenBelt)
-                                ? neighbourBelt.ItemTakenBelt
-                                : nList[0];
-                            
-                            var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir, preBelt.Dir);
-                            neighbourBelt.BeltVisual.SetVisualDirection(dir);
-                        }
-                        else
-                        {
-                            if (neighbourBelt.BeltVisual.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
-                                neighbourBelt.BeltVisual.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
-                        }
+                        if (nBelt.BeltVisual.direction != ConveyorBeltVisualController.BeltVisualDirection.Flat)
+                            nBelt.BeltVisual.SetVisualDirection(ConveyorBeltVisualController.BeltVisualDirection.Flat);
+                    }
+                    else
+                    {
+                        var tCarrier = 
+                            _grid.GetGridObject(nBelt.InputCoordinates[0]).OwnedObjectBase as IItemCarrier ?? nList[0];
+
+                        var dir =
+                            nBelt.BeltVisual.GetVisualDirection(nBelt.Dir,
+                                tCarrier.GetDirectionAccordingOurCoordinate(nTile.GetGridPosition));
+                        nBelt.BeltVisual.SetVisualDirection(dir);
                     }
                 }
             }
         }
-        */
-        
-        
+            
+        placedObject.DestroySelf();
     }
 
 

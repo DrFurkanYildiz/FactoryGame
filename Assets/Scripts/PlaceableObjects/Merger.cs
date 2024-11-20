@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-public class Merger : PlaceableObjectBase, IItemCarrier
+public class Merger : PlaceableObjectBase
 {
     [ShowInInspector] private readonly Queue<Item> _items = new();
     private const int MaxItemCarryCount = 3;
@@ -40,9 +40,9 @@ public class Merger : PlaceableObjectBase, IItemCarrier
         return true;
     }
 
-    public IEnumerable<Vector2Int> GetGridPosition()
+    public List<Vector2Int> GetGridPosition()
     {
-        return new[] { Origin };
+        return new List<Vector2Int> { Origin };
     }
 
 }

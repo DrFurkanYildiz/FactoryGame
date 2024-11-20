@@ -32,6 +32,18 @@ public class PlaceableObjectBaseSo : ScriptableObject
             case Dir.Right:     return Dir.Down;
         }
     }
+
+    public static Dir GetOppositeDirection(Dir dir)
+    {
+        return dir switch
+        {
+            Dir.Down => Dir.Up,
+            Dir.Left => Dir.Right,
+            Dir.Up => Dir.Down,
+            Dir.Right => Dir.Left,
+            _ => throw new ArgumentOutOfRangeException(nameof(dir), dir, null)
+        };
+    }
     public static Vector2Int GetDirForwardVector(Dir dir) {
         switch (dir) {
             default:

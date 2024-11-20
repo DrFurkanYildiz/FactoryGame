@@ -13,8 +13,9 @@ public class Storage : PlaceableObjectBase, IItemCarrier
     private Item _gateItem;
     private Item _item;
     private ItemSo _itemSo;
-    
-    
+
+
+    public Dictionary<IItemCarrier, Vector2Int> OutputItemCarrierDictionary { get; set; }
     public List<Vector2Int> OutputCoordinates { get; set; }
     public List<Vector2Int> InputCoordinates { get; set; }
     public List<IItemCarrier> SendingItemCarriers { get; set; }
@@ -107,10 +108,12 @@ public class Storage : PlaceableObjectBase, IItemCarrier
         return true;
     }
 
-    public IEnumerable<Vector2Int> GetGridPosition()
+    public List<Vector2Int> GetGridPosition()
     {
-        return new[] { _gatePosition };
+        return new List<Vector2Int> { _gatePosition };
     }
+
+    public Dictionary<IItemCarrier, Vector2Int> InputItemCarrierDictionary { get; set; }
 
 
     public Vector3 GetCarryItemWorldPosition(Item item)
