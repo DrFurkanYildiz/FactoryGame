@@ -12,7 +12,8 @@ public enum PlaceableType
     ConveyorTunnel,
     Storage,
     Machine1,
-    Splitter
+    Splitter,
+    Merger
 }
 public class PlaceableObjectBaseSo : ScriptableObject
 {

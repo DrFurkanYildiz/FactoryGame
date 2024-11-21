@@ -154,19 +154,6 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         return Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir);
     }
 
-    private bool IsOppositeDirection(Dir currentDir, Dir targetDir)
-    {
-        return currentDir switch
-        {
-            Dir.Down => targetDir is Dir.Up,
-            Dir.Left => targetDir is Dir.Right,
-            Dir.Up => targetDir is Dir.Down,
-            Dir.Right => targetDir is Dir.Left,
-            _ => throw new ArgumentOutOfRangeException(nameof(currentDir), currentDir, null)
-        };
-    }
-
-    
     /// <summary>
     /// Bize item gönderebilecek item taşıyıcıların listesi. Yani bize bakan taşıyıcılar.
     /// </summary>
@@ -181,7 +168,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
             {
                 case ConveyorBelt neighbourBelt:
                 {
-                    if (neighbourBelt.OutputCoordinates.Contains(Origin) && !IsOppositeDirection(Dir, neighbourBelt.Dir))
+                    if (neighbourBelt.OutputCoordinates.Contains(Origin) && Dir != PlaceableObjectBaseSo.GetOppositeDirection(neighbourBelt.Dir))
                     {
                         if (!list.Contains(neighbourBelt))
                             list.Add(neighbourBelt);
@@ -191,7 +178,7 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
                 }
                 case Splitter neighbourSplitter:
                     var nDir = PlaceableObjectBaseSo.GetDir(neighbourSplitter.Origin, Origin);
-                    if (neighbourSplitter.OutputCoordinates.Contains(Origin) && !IsOppositeDirection(nDir, Dir))
+                    if (neighbourSplitter.OutputCoordinates.Contains(Origin) && Dir != PlaceableObjectBaseSo.GetOppositeDirection(nDir))
                     {
                         if (!list.Contains(neighbourSplitter))
                             list.Add(neighbourSplitter);

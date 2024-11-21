@@ -13,7 +13,6 @@ public class Item : MonoBehaviour
         return item;
     }
 
-    private Vector2Int _gridPosition;
     public ItemSo ItemSo { get; private set; }
 
     public void DestroySelf()

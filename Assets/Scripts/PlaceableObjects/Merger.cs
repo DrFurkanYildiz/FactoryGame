@@ -1,48 +1,97 @@
 using System.Collections.Generic;
-using Sirenix.OdinInspector;
+using System.Linq;
+using GridSystem;
 using UnityEngine;
 
-public class Merger : PlaceableObjectBase
+public class Merger : PlaceableObjectBase, IItemCarrier
 {
-    [ShowInInspector] private readonly Queue<Item> _items = new();
-    private const int MaxItemCarryCount = 3;
+    //Birleştirici..... 3 Giriş - 1 Çıkış
 
-    public List<Vector2Int> OutputCoordinates { get; set; }
-    public List<Vector2Int> InputCoordinates { get; set; }
-    public List<IItemCarrier> SendingItemCarriers { get; set; }
-    public List<IItemCarrier> TakenItemCarriers { get; set; }
-    public Dir GetDirectionAccordingOurCoordinate(Vector2Int currentCoordinate)
+    private Item _currentItem;
+    private int _takenIndex;
+    public List<Vector2Int> InputCoordinates { get; set; } = new();
+    public List<Vector2Int> OutputCoordinates { get; set; } = new();
+
+    private List<Vector2Int> _inputItemCarrierCoordinatesCache = new();
+    private Vector2Int _nextTakenCoordinate;
+
+    protected override void Setup()
     {
-        throw new System.NotImplementedException();
+        OutputCoordinates.Add(Origin + PlaceableObjectBaseSo.GetDirForwardVector(Dir));
+        InputCoordinates = CurrentTile.GetNeighbourList(Grid).Select(t => t.GetGridPosition)
+            .Where(c => !OutputCoordinates.Contains(c)).ToList();
+        UpdateInputCarrierCoordinatesCache();
     }
 
+    public override void DestroySelf()
+    {
+        base.DestroySelf();
+        if(_currentItem != null)
+            _currentItem.DestroySelf();
+    }
 
     private void Update()
     {
-        if (_items.Count == 0) return;
+        if (_currentItem == null)
+        {
+            if (_inputItemCarrierCoordinatesCache.Count <= 0) return;
 
-        foreach (var item in _items)
+            _takenIndex = (_takenIndex + 1) % _inputItemCarrierCoordinatesCache.Count;
+            _nextTakenCoordinate = _inputItemCarrierCoordinatesCache[_takenIndex];
+        }
+        else
         {
             var targetPosition = Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
-            if (item.transform.position != targetPosition)
+
+            _currentItem.transform.position = Vector3.MoveTowards(_currentItem.transform.position, targetPosition, 0.01f);
+            if (_currentItem.transform.position != targetPosition) return;
+        
+            if (Grid.GetGridObject(OutputCoordinates[0]).OwnedObjectBase is not IItemCarrier sendingCarrier ||
+                !sendingCarrier.InputCoordinates.Contains(Origin)) return;
+            
+            
+            if (sendingCarrier.TrySetWorldItem(_currentItem))
             {
-                item.transform.position = Vector3.MoveTowards(item.transform.position, targetPosition, .01f);
+                _currentItem = null;
+                if (_inputItemCarrierCoordinatesCache.Count > 0)
+                {
+                    _takenIndex = (_takenIndex + 1) % _inputItemCarrierCoordinatesCache.Count;
+                    _nextTakenCoordinate = _inputItemCarrierCoordinatesCache[_takenIndex];
+                }
             }
         }
+        
     }
 
     public bool TrySetWorldItem(Item item)
     {
-        if (!item.ItemSo.isSolidItem) return false;
-        if (_items.Count >= MaxItemCarryCount) return false;
+        if (_currentItem != null) 
+            return false;
 
-        _items.Enqueue(item);
+        if (Grid.GetCoordinate(item.transform.position) != _nextTakenCoordinate)
+            return false;
+        
+        _currentItem = item;
         return true;
     }
+
 
     public List<Vector2Int> GetGridPosition()
     {
         return new List<Vector2Int> { Origin };
     }
+    
+    public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)
+    {
+        return PlaceableObjectBaseSo.GetDir(Origin, coordinate);
+    }
 
+    public void UpdateInputCarrierCoordinatesCache()
+    {
+        _inputItemCarrierCoordinatesCache = InputCoordinates
+            .Where(c =>
+                Grid.GetGridObject(c).OwnedObjectBase is IItemCarrier carrier &&
+                carrier.OutputCoordinates.Contains(Origin))
+            .ToList();
+    }
 }
