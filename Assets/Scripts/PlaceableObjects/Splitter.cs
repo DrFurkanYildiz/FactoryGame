@@ -65,11 +65,6 @@ public class Splitter : PlaceableObjectBase, IItemCarrier
         _currentItem = item;
         return true;
     }
-
-    public List<Vector2Int> GetGridPosition()
-    {
-        return new List<Vector2Int> { Origin };
-    }
     
     public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)
     {

@@ -3,7 +3,6 @@ using UnityEngine;
 public interface IItemCarrier
 {
     bool TrySetWorldItem(Item item);
-    List<Vector2Int> GetGridPosition();
 
     
     List<Vector2Int> OutputCoordinates { get; set; }

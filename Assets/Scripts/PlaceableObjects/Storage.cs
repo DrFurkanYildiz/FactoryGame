@@ -1,58 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using GridSystem;
-using Helpers;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class Storage : PlaceableObjectBase, IItemCarrier
 {
-    private Vector2Int _gatePosition;
-    [SerializeField] private StorageType _storageType;
-    private Tile _gateNeighbourTile;
-    private Item _gateItem;
-    private Item _item;
     private ItemSo _itemSo;
 
+    private Item _inputItem;
+    private Item _outputItem;
+    private Vector2Int _inputCoordinate;
+    private Vector2Int _outputCoordinate;
+    
+    private Vector3 _outputWorldPosition;
+    private Vector3 _inputWorldPosition;
 
-    public Dictionary<IItemCarrier, Vector2Int> OutputItemCarrierDictionary { get; set; }
-    public List<Vector2Int> OutputCoordinates { get; set; }
-    public List<Vector2Int> InputCoordinates { get; set; }
-    public List<IItemCarrier> SendingItemCarriers { get; set; }
-    public List<IItemCarrier> TakenItemCarriers { get; set; }
-    public Dir GetDirectionAccordingOurCoordinate(Vector2Int currentCoordinate)
-    {
-        throw new NotImplementedException();
-    }
+    private int _inputItemCount;
 
-
-    [Serializable]
-    public enum StorageType
-    {
-        Input, Output
-    }
-
-    private int _debugSpawnItemCount;
-    private int _debugStoreItemCount;
-
-    private Tile _itemSendingTile; 
+    [field:SerializeField] public List<Vector2Int> OutputCoordinates { get; set; }
+    [field:SerializeField]public List<Vector2Int> InputCoordinates { get; set; }
+    
+    
     
     protected override void Setup()
     {
-        var positionList = placeableObjectSo.GetGridPositionList(Origin, Dir);
-        _gatePosition = positionList[(positionList.Count - 1) / 2] + 
-               PlaceableObjectSo.GetDirForwardVector(Dir);
+        _itemSo = GameAssets.i.GetItemSo((ItemType)Random.Range(1,3));
+        
+        _inputCoordinate = ((PlaceableBlueprintSo)placeableObjectSo).GetIOTypePositionList(IOType.Input, Origin, Dir)[0];
+        _outputCoordinate = ((PlaceableBlueprintSo)placeableObjectSo).GetIOTypePositionList(IOType.Output, Origin, Dir)[0];
 
-        _gateNeighbourTile = Grid.GetGridObject(_gatePosition + PlaceableObjectBaseSo.GetDirForwardVector(Dir));
-
-        _itemSo = GameAssets.i.GetItemSo(ItemType.C);
-        _debugSpawnItemCount = 60;
-
-        var itemSendingCoordinate = _gatePosition + PlaceableObjectBaseSo.GetDirForwardVector(Dir);
-        _itemSendingTile = Grid.GetGridObject(itemSendingCoordinate);
-
-        //if (_storageType is StorageType.Output)
-        //InitializedItemCreator();
+        InputCoordinates.Add(_inputCoordinate + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1);
+        OutputCoordinates.Add(_outputCoordinate + PlaceableObjectBaseSo.GetDirForwardVector(Dir));
+        
+        _inputWorldPosition = Grid.GetWorldPosition(_inputCoordinate) + Grid.GetCellSizeOffset();
+        _outputWorldPosition = Grid.GetWorldPosition(_outputCoordinate) + Grid.GetCellSizeOffset();
     }
     
 
@@ -60,64 +39,52 @@ public class Storage : PlaceableObjectBase, IItemCarrier
     {
         base.DestroySelf();
 
-        if (_item != null)
-            _item.DestroySelf();
+        if (_inputItem != null)
+            _inputItem.DestroySelf();
+        if(_outputItem != null)
+            _outputItem.DestroySelf();
     }
 
     private void Update()
     {
-        if (_item == null && _debugSpawnItemCount > 0)
+        if (_inputItem != null)
         {
-            var position = Grid.GetWorldPosition(_gatePosition) + Grid.GetCellSizeOffset();
-            _item = Item.CreateItem(position, _itemSo);
-            _debugSpawnItemCount--;
+            // İtemi hedef konuma doğru hareket ettir
+            _inputItem.transform.position = Vector3.MoveTowards(_inputItem.transform.position, _inputWorldPosition, 0.01f);
+            if (_inputItem.transform.position != _inputWorldPosition) return;
+            
+            _inputItem.DestroySelf();
+            _inputItemCount++;
+            _inputItem = null;
         }
-        
-        
-        if(_item != null)
+
+        if (_outputItem == null)
         {
-            if (_itemSendingTile?.OwnedObjectBase is not IItemCarrier nextCarrier) return;
-            if (nextCarrier.GetGridPosition().All(p => p != _itemSendingTile.GetGridPosition)) return;
-            if (nextCarrier.TrySetWorldItem(_item))
+            _outputItem = Item.CreateItem(_outputWorldPosition, _itemSo);
+        }
+        else
+        {
+            if (Grid.GetGridObject(OutputCoordinates[0]).OwnedObjectBase is not IItemCarrier sendingCarrier ||
+                !sendingCarrier.InputCoordinates.Contains(_outputCoordinate))
+                return;
+            
+            if (sendingCarrier.TrySetWorldItem(_outputItem))
             {
-                _item = null; 
+                _outputItem = null;
             }
         }
         
     }
 
-    private void InputStorageAction()
-    {
-        if (_gateItem != null)
-        {
-            _gateItem.DestroySelf();
-            _gateItem = null;
-            _debugStoreItemCount++;
-        }
-    }
-
-    public bool CanCarryItem(ItemSo itemSo)
-    {
-        return itemSo.isSolidItem;
-    }
-    
     public bool TrySetWorldItem(Item item)
     {
-        if (_gateItem != null) return false;
-        _gateItem = item;
+        if (_inputItem != null) return false;
+        _inputItem = item;
         return true;
     }
 
-    public List<Vector2Int> GetGridPosition()
+    public Dir GetDirectionAccordingOurCoordinate(Vector2Int currentCoordinate)
     {
-        return new List<Vector2Int> { _gatePosition };
-    }
-
-    public Dictionary<IItemCarrier, Vector2Int> InputItemCarrierDictionary { get; set; }
-
-
-    public Vector3 GetCarryItemWorldPosition(Item item)
-    {
-        return Grid.GetWorldPosition(_gatePosition) + Grid.GetCellSizeOffset();
+        return Dir;
     }
 }

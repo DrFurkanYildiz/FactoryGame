@@ -8,10 +8,8 @@ public enum Dir { Down, Left, Up, Right, }
 public enum PlaceableType
 {
     ConveyorBelt,
-    ConveyorSplitter,
-    ConveyorTunnel,
     Storage,
-    Machine1,
+    Machine,
     Splitter,
     Merger
 }

@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2a77673a4430d744968519fe5864baa, type: 3}
   m_Name: Test Recipe
   m_EditorClassIdentifier: 
+  inputItemList:
+  - item: {fileID: 11400000, guid: 5d494367ad6676e40a5fd5f1a2141bfe, type: 2}
+    amount: 4
+  - item: {fileID: 11400000, guid: 03b49f45bf4242746945f6106f9e77d3, type: 2}
+    amount: 2
   outputItemList:
   - item: {fileID: 11400000, guid: 26cfbb6f82aad7d448f5bd8ae4d488b2, type: 2}
-    amount: 12
-  - item: {fileID: 11400000, guid: 03b49f45bf4242746945f6106f9e77d3, type: 2}
-    amount: 12
-  inputItemList:
-  - item: {fileID: 11400000, guid: 3f0753bc641e1c046bc2c2e06606f4e5, type: 2}
     amount: 4
-  craftingEffort: 1
+  craftingEffort: 3

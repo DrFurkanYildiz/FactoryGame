@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b2cb2bc74c4406e94d48be5b9dd98be, type: 3}
   m_Name: Machine
   m_EditorClassIdentifier: 
-  type: 4
+  type: 2
   prefab: {fileID: 4528826241264032069, guid: d59d4f342576adf4e967665af4e078bd, type: 3}
   visual: {fileID: 2355614393633472111, guid: 73302e81fb573ac488bebc363f4f20ea, type: 3}
   height: 2
   width: 3
   grid:
-  - values: 000000000100000000000000
-  - values: 020000000000000002000000
+  - values: 010000000000000001000000
+  - values: 000000000200000000000000
   isMachine: 1
   itemRecipeSo: {fileID: 11400000, guid: 2c7f6a08927157448a891605eee57d2d, type: 2}

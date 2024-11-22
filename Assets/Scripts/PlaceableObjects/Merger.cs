@@ -14,6 +14,7 @@ public class Merger : PlaceableObjectBase, IItemCarrier
 
     private List<Vector2Int> _inputItemCarrierCoordinatesCache = new();
     private Vector2Int _nextTakenCoordinate;
+    
 
     protected override void Setup()
     {
@@ -73,12 +74,6 @@ public class Merger : PlaceableObjectBase, IItemCarrier
         
         _currentItem = item;
         return true;
-    }
-
-
-    public List<Vector2Int> GetGridPosition()
-    {
-        return new List<Vector2Int> { Origin };
     }
     
     public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)

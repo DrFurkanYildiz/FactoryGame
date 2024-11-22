@@ -5,8 +5,8 @@ using UnityEngine;
 [CreateAssetMenu()]
 public class ItemRecipeSo : ScriptableObject {
 
-    public List<RecipeItem> outputItemList;
     public List<RecipeItem> inputItemList;
+    public List<RecipeItem> outputItemList;
     public float craftingEffort;
 
     [System.Serializable]

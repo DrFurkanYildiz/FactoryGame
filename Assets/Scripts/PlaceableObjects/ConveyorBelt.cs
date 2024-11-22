@@ -121,11 +121,6 @@ public class ConveyorBelt : PlaceableObjectBase, IItemCarrier
         _indexItems[0] = item;
         return true;
     }
-
-    public List<Vector2Int> GetGridPosition()
-    {
-        return new List<Vector2Int> { Origin };
-    }
     
     public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)
     {

@@ -3,7 +3,7 @@ using UnityEngine;
 
 
 [CreateAssetMenu(fileName = "New Placeable Blueprint So")]
-public class PlaceableBlueprintSo : PlaceableObjectSo
+public class PlaceableBlueprintSo : PlaceableObjectBaseSo
 {
     public Wrapper<Elements>[] grid;
     public bool isMachine;

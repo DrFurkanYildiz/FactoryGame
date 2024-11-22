@@ -22,6 +22,7 @@ public class ConveyorTunnel : PlaceableObjectBase
             _item.DestroySelf();
     }
 
+    /*
     private void Update()
     {
         if (_item == null) return;
@@ -57,7 +58,7 @@ public class ConveyorTunnel : PlaceableObjectBase
 
     }
 
-    
+    */
 
     public bool CanCarryItem(ItemSo itemSo)
     {

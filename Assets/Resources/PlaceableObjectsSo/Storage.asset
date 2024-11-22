@@ -9,11 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 187ca4f3c7164678ae1d44bc36a77acf, type: 3}
+  m_Script: {fileID: 11500000, guid: 6b2cb2bc74c4406e94d48be5b9dd98be, type: 3}
   m_Name: Storage
   m_EditorClassIdentifier: 
-  type: 3
+  type: 1
   prefab: {fileID: 4528826241264032069, guid: 0e10980db19e90c4199cb9aa64ed95a3, type: 3}
   visual: {fileID: 2355614393633472111, guid: ebe9f57f8f4b54946a3da3178c1f4cf5, type: 3}
   height: 3
   width: 3
+  grid:
+  - values: 000000000100000000000000
+  - values: 000000000000000000000000
+  - values: 000000000200000000000000
+  isMachine: 0
+  itemRecipeSo: {fileID: 0}

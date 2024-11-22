@@ -1,56 +1,57 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Sirenix.OdinInspector;
 using UnityEngine;
 
-public class Machine : PlaceableObjectBase
+public class Machine : PlaceableObjectBase, IItemCarrier
 {
+    private const int InputItemMaxStackAmount = 10;
     private PlaceableBlueprintSo _blueprintSo;
     private float _craftingProgress;
+    
+    public List<Vector2Int> OutputCoordinates { get; set; } = new();
+    public List<Vector2Int> InputCoordinates { get; set; } = new();
+ 
     private List<ItemRecipeSo.RecipeItem> _recipeInputs;
     private List<ItemRecipeSo.RecipeItem> _recipeOutputs;
+    
+    private readonly List<ItemStack> _inputItemStacks = new();
+    private readonly List<ItemStack> _outputItemStacks = new();
 
-    private List<Vector2Int> _inputGates;
-    private List<Vector2Int> _outputGates;
-
-    private const int InputItemMaxStackAmount = 10;
-
-    [ShowInInspector] private Dictionary<ItemSo, int> _inputStacks = new Dictionary<ItemSo, int>();
-    [ShowInInspector] private Dictionary<ItemSo, int> _outputStacks = new Dictionary<ItemSo, int>();
-
-    [ShowInInspector] private List<Item> _stackItem = new();
-
-    private Dictionary<Vector2Int, ItemSo> _outputGateItemMap;
+    [Serializable]
+    private class ItemStack
+    {
+        public ItemSo itemSo;
+        public Item item;
+        public int count;
+        public Vector2Int coordinate;
+    }
 
     protected override void Setup()
     {
-        if (placeableObjectSo is not PlaceableBlueprintSo blueprintSo) return;
-        _blueprintSo = blueprintSo;
-        _recipeInputs = blueprintSo.itemRecipeSo.inputItemList;
-        _recipeOutputs = blueprintSo.itemRecipeSo.outputItemList;
+        _blueprintSo = (PlaceableBlueprintSo)placeableObjectSo;
+        _recipeInputs = _blueprintSo.itemRecipeSo.inputItemList;
+        _recipeOutputs = _blueprintSo.itemRecipeSo.outputItemList;
 
-        _inputGates = blueprintSo.GetIOTypePositionList(IOType.Input, Origin, Dir);
-        _outputGates = blueprintSo.GetIOTypePositionList(IOType.Output, Origin, Dir);
+        var input = _blueprintSo.GetIOTypePositionList(IOType.Input, Origin, Dir);
+        var output = _blueprintSo.GetIOTypePositionList(IOType.Output, Origin, Dir);
+        
+        input.ForEach(c => InputCoordinates.Add(c + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1));
+        output.ForEach(c => OutputCoordinates.Add(c + PlaceableObjectBaseSo.GetDirForwardVector(Dir)));
+        
+        for (var i = 0; i < _recipeInputs.Count; i++)
+            _inputItemStacks.Add(new ItemStack { itemSo = _recipeInputs[i].item });
 
-        _recipeInputs.ForEach(r => _inputStacks.Add(r.item, 0));
-        _recipeOutputs.ForEach(r => _outputStacks.Add(r.item, 0));
+        for (var i = 0; i < output.Count; i++)
+            if (i < _recipeOutputs.Count)
+                _outputItemStacks.Add(new ItemStack
+                    { itemSo = _recipeOutputs[i].item, item = null, count = 0, coordinate = output[i] });
 
-
-        _outputGateItemMap = new Dictionary<Vector2Int, ItemSo>();
-
-        for (int i = 0; i < _outputGates.Count; i++)
-        {
-            if (i < _recipeOutputs.Count) // Eğer bir ürün varsa kapıya eşle
-            {
-                _outputGateItemMap[_outputGates[i]] = _recipeOutputs[i].item;
-                Debug.Log($"{_outputGates[i]} kapısına {_recipeOutputs[i].item.name} eklendi.");
-            }
-        }
     }
 
     private void Update()
     {
+
         if (HasEnoughItemsToCraft())
         {
             _craftingProgress += Time.deltaTime;
@@ -58,149 +59,88 @@ public class Machine : PlaceableObjectBase
             if (_craftingProgress >= _blueprintSo.itemRecipeSo.craftingEffort)
             {
                 _craftingProgress = 0f;
-
-                foreach (var recipeItem in _recipeInputs)
-                    if (_inputStacks.ContainsKey(recipeItem.item))
-                        _inputStacks[recipeItem.item] -= recipeItem.amount;
-
-                foreach (var recipeItem in _recipeOutputs)
-                {
-                    if (_outputStacks.ContainsKey(recipeItem.item))
-                    {
-                        _outputStacks[recipeItem.item] += recipeItem.amount;
-                    }
-                }
-
+                ItemCraft();
 
                 Debug.Log("Craft Machine!");
             }
         }
 
-        if (_stackItem.Count > 0)
-        {
-            _stackItem[0].DestroySelf();
-            _stackItem.RemoveAt(0);
-        }
+        OutputAction();
 
-
-        OutputStorageAction();
     }
 
-    public bool CanCarryItem(ItemSo itemSo)
+    private void ItemCraft()
     {
-        //Makinalar ürün tipine bakarak aldığı için taşıma solid kontolü yapmasına gerek yok.
-        return true;
+        //Girdileri tüket
+        foreach (var recipeInput in _recipeInputs)
+        {
+            foreach (var itemStack in _inputItemStacks)
+                if (itemStack.itemSo == recipeInput.item)
+                    itemStack.count -= recipeInput.amount;
+        }
+
+        //Çıktıları ekle
+        foreach (var recipeOutput in _recipeOutputs)
+        {
+            foreach (var itemStack in _outputItemStacks)
+            {
+                if (itemStack.itemSo == recipeOutput.item)
+                    itemStack.count += recipeOutput.amount;
+            }
+        }
     }
 
     public bool TrySetWorldItem(Item item)
     {
-        if (!_inputStacks.ContainsKey(item.ItemSo) || _inputStacks[item.ItemSo] >= InputItemMaxStackAmount)
+        if (_inputItemStacks.All(s => s.itemSo != item.ItemSo || s.count >= InputItemMaxStackAmount))
             return false;
 
-        _stackItem.Add(item);
-        _inputStacks[item.ItemSo]++;
+        foreach (var itemStack in _inputItemStacks)
+            if (itemStack.itemSo == item.ItemSo)
+            {
+                itemStack.count++;
+                item.DestroySelf();
+            }
+
         return true;
     }
 
-    public IEnumerable<Vector2Int> GetGridPosition()
+    public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)
     {
-        return _inputGates.ToArray();
-    }
-
-    public Vector3 GetCarryItemWorldPosition(Item item)
-    {
-        return Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
-    }
-
-    public void AddNeighbourCarrier(IItemCarrier carrier)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void OnItemControl(Item item)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void OnItemControl()
-    {
-        throw new NotImplementedException();
-    }
-
-    public bool IsCarryItem()
-    {
-        throw new NotImplementedException();
-    }
-
-    public void CarryControl()
-    {
-        throw new NotImplementedException();
+        return Dir;
     }
 
     private bool HasEnoughItemsToCraft()
     {
-        return _recipeInputs.TrueForAll(recipeInput => _inputStacks[recipeInput.item] >= recipeInput.amount);
+        return _recipeInputs.TrueForAll(r => _inputItemStacks.Find(s => s.itemSo == r.item).count >= r.amount);
     }
 
-    private void OutputStorageAction()
+    private void OutputAction()
     {
-        Debug.Log("OutputStorageAction başlatıldı.");
-
-        foreach (var outputGate in _outputGates)
+        foreach (var nextCoordinate in OutputCoordinates)
         {
-            Debug.Log($"Çıkış kapısı kontrol ediliyor: {outputGate}");
-
-            // Çıkış kapısındaki komşu nesneyi al
-            var outputPosition = outputGate + PlaceableObjectSo.GetDirForwardVector(Dir);
-            var outputTile = Grid.GetGridObject(outputPosition);
-            if (outputTile.OwnedObjectBase is not IItemCarrier itemSlotObj)
-            {
-                Debug.LogWarning($"Komşu nesne IItemCarrier değil: {outputTile.OwnedObjectBase}");
+            var outputGate = nextCoordinate + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1;
+            if (Grid.GetGridObject(nextCoordinate).OwnedObjectBase is not IItemCarrier sendingCarrier ||
+                !sendingCarrier.InputCoordinates.Contains(outputGate))
                 continue;
-            }
 
-            if (itemSlotObj.GetGridPosition().All(p => p != outputPosition))
+            foreach (var itemStack in _outputItemStacks)
             {
-                Debug.LogWarning($"Komşu nesne giriş kapısı değil: {outputPosition}");
-                continue;
-            }
-
-            // Bu kapıya eşlenen öğeyi al
-            if (!_outputGateItemMap.TryGetValue(outputGate, out var outputItem))
-            {
-                Debug.LogWarning($"Kapıya öğe eşlemesi yapılmamış: {outputGate}");
-                continue;
-            }
-
-            Debug.Log($"Kontrol edilen öğe: {outputItem.name}, Mevcut stok: {_outputStacks[outputItem]}");
-
-            if (_outputStacks[outputItem] <= 0)
-            {
-                Debug.Log($"Stokta yeterli {outputItem.name} yok, diğer öğeye geçiliyor.");
-                continue;
-            }
-
-            // Öğeyi çıkış noktasına aktarmayı dene
-            //var itemInstance = Item.CreateItem(Grid, outputGate, outputItem);
-            var position = Grid.GetWorldPosition(outputGate) + Grid.GetCellSizeOffset();
-            var itemInstance = Item.CreateItem(position, outputItem);
-            Debug.Log($"{outputItem.name} öğesi {outputGate} noktasında oluşturuldu.");
-
-            if (itemSlotObj.TrySetWorldItem(itemInstance))
-            {
-                // Başarıyla aktarılırsa öğeyi taşı ve stoktan düş
-                Debug.Log($"{outputItem.name} öğesi başarıyla çıkış kapısına aktarıldı.");
-                //itemInstance.MoveToItemSlot(itemSlotObj.GetCarryItemWorldPosition(itemInstance));
-                _outputStacks[outputItem]--;
-                Debug.Log($"{outputItem.name} öğesi stoktan düşüldü. Kalan miktar: {_outputStacks[outputItem]}");
-            }
-            else
-            {
-                Debug.LogWarning($"{outputItem.name} öğesi aktarılamadı, çıkış kapısına yerleştirilemedi.");
-                itemInstance.DestroySelf();
+                if (itemStack.coordinate == outputGate)
+                {
+                    if (itemStack.item == null && itemStack.count > 0)
+                    {
+                        var position = Grid.GetWorldPosition(outputGate) + Grid.GetCellSizeOffset();
+                        itemStack.item = Item.CreateItem(position, itemStack.itemSo);
+                        itemStack.count--;
+                    }
+                    
+                    if (itemStack.item != null && sendingCarrier.TrySetWorldItem(itemStack.item))
+                    {
+                        itemStack.item = null;
+                    }
+                }
             }
         }
-
-        Debug.Log("OutputStorageAction tamamlandı.");
     }
 }

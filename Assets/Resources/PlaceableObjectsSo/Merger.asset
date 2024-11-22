@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 187ca4f3c7164678ae1d44bc36a77acf, type: 3}
   m_Name: Merger
   m_EditorClassIdentifier: 
-  type: 6
+  type: 4
   prefab: {fileID: 4528826241264032069, guid: f39c52806f0d99a469f46927192a4deb, type: 3}
   visual: {fileID: 261154728464102486, guid: 223e8de81e5105f4aaf1c8dc2a328a31, type: 3}
   height: 1
