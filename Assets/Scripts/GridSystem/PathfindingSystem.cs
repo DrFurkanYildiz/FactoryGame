@@ -15,7 +15,7 @@ namespace GridSystem
         void CalculateFCost();
     }
 
-    public class PathfindingSystem<T> where T : IPathNode
+    public class PathfindingSystem<T> where T : class, IPathNode
     {
         private readonly Grid<T> _grid;
 
@@ -26,33 +26,21 @@ namespace GridSystem
 
         public PathfindingSystem(Grid<T> grid)
         {
-            this._grid = grid;
+            _grid = grid;
         }
 
-        public List<Vector3> FindPath(Vector3 startWorldPosition, Vector3 endWorldPosition, bool isCornerIncluded)
+        public List<Vector2Int> FindPath(Vector2Int startCoordinate, Vector2Int endCoordinate,
+            bool isCornerIncluded = false, bool isCanBuildActive = true)
         {
-            _grid.GetXZ(startWorldPosition, out int startX, out int startZ);
-            _grid.GetXZ(endWorldPosition, out int endX, out int endZ);
+            var path = FindPath(startCoordinate.x, startCoordinate.y, endCoordinate.x, endCoordinate.y,
+                isCornerIncluded, isCanBuildActive);
 
-            List<T> path = FindPath(startX, startZ, endX, endZ, isCornerIncluded);
-            if (path == null)
-            {
-                return null;
-            }
-            else
-            {
-                List<Vector3> vectorPath = new List<Vector3>();
-                foreach (T node in path)
-                {
-                    vectorPath.Add(new Vector3(node.x, 0, node.y) * _grid.GetCellSize() +
-                                   Vector3.one * _grid.GetCellSize() * .5f);
-                }
-
-                return vectorPath;
-            }
+            var list = new List<Vector2Int>();
+            path?.ForEach(n => list.Add(new Vector2Int(n.x, n.y)));
+            return list;
         }
 
-        private List<T> FindPath(int startX, int startY, int endX, int endY, bool isCornerIncluded)
+        private List<T> FindPath(int startX, int startY, int endX, int endY, bool isCornerIncluded, bool isCanBuild = true)
         {
             T startNode = _grid.GetGridObject(startX, startY);
             T endNode = _grid.GetGridObject(endX, endY);
@@ -90,12 +78,19 @@ namespace GridSystem
                 foreach (T neighbourNode in GetNeighbourList(currentNode, isCornerIncluded))
                 {
                     if (_closedList.Contains(neighbourNode)) continue;
-                    if (!neighbourNode.canBuild)
+                    if (isCanBuild)
                     {
-                        _closedList.Add(neighbourNode);
-                        continue;
+                        if (!neighbourNode.canBuild)
+                        {
+                            _closedList.Add(neighbourNode);
+                            continue;
+                        }
                     }
-
+                    else
+                    {
+                        _closedList.Add(neighbourNode);    
+                    }
+                    
                     int tentativeGCost = currentNode.gCost + CalculateDistanceCost(currentNode, neighbourNode);
                     if (tentativeGCost < neighbourNode.gCost)
                     {
@@ -113,12 +108,7 @@ namespace GridSystem
             }
             return null;
         }
-
-        public List<T> GetNeighbour(T node, bool isCornerIncluded = false)
-        {
-            return GetNeighbourList(node, isCornerIncluded);
-        }
-
+        
         private List<T> GetNeighbourList(T currentNode, bool isCornerIncluded)
         {
             List<T> neighbourList = new List<T>();

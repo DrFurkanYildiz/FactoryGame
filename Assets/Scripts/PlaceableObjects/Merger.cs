@@ -33,6 +33,11 @@ public class Merger : PlaceableObjectBase, IItemCarrier
 
     private void Update()
     {
+        ItemTransport();
+    }
+
+    public void ItemTransport()
+    {
         if (_currentItem == null)
         {
             if (_inputItemCarrierCoordinatesCache.Count <= 0) return;
@@ -61,7 +66,6 @@ public class Merger : PlaceableObjectBase, IItemCarrier
                 }
             }
         }
-        
     }
 
     public bool TrySetWorldItem(Item item)
@@ -73,6 +77,7 @@ public class Merger : PlaceableObjectBase, IItemCarrier
             return false;
         
         _currentItem = item;
+        item.SetCarrier(this);
         return true;
     }
     
@@ -88,5 +93,9 @@ public class Merger : PlaceableObjectBase, IItemCarrier
                 Grid.GetGridObject(c).OwnedObjectBase is IItemCarrier carrier &&
                 carrier.OutputCoordinates.Contains(Origin))
             .ToList();
+    }
+    public float ItemCarrySpeed()
+    {
+        return ((PlaceableObjectSo)placeableObjectSo).itemCarrySpeed;
     }
 }

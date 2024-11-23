@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using GridSystem;
 using UnityEngine;
@@ -23,9 +24,6 @@ public abstract class PlaceableObjectBase : MonoBehaviour
     protected PlaceableObjectBaseSo placeableObjectSo;
     public Vector2Int Origin { get; private set; }
     public Dir Dir { get; private set; }
-    
-    public PlaceableObjectBase TunnelPlaceableObjectBase { get; set; }
-    public ConveyorTunnelType ConveyorTunnelType { get; set; }
     public Tile CurrentTile => Grid.GetGridObject(Origin);
 
     protected virtual void Setup() {}
@@ -37,4 +35,5 @@ public abstract class PlaceableObjectBase : MonoBehaviour
             Grid.GetGridObject(gridPosition.x, gridPosition.y).ClearPlacedObject();
         Destroy(gameObject);
     }
+
 }

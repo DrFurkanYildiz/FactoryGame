@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace GridSystem
@@ -25,6 +24,18 @@ namespace GridSystem
                 TriggerGridObjectChanged();
             }
         }
+
+        private ConveyorTunnelBelt _ownedTunnelBelt;
+        public ConveyorTunnelBelt OwnedTunnelBelt
+        {
+            get => _ownedTunnelBelt;
+            set
+            {
+                _ownedTunnelBelt = value;
+                TriggerGridObjectChanged();
+            }
+        }
+        
         public Vector2Int GetGridPosition => new (x, y);
 
         public Tile(Grid<Tile> grid, int x, int y) {
@@ -35,7 +46,7 @@ namespace GridSystem
         }
 
         public override string ToString() {
-            return x + ", " + y + "\n" + _ownedObjectBase;
+            return x + ", " + y + "\n" + _ownedTunnelBelt;
         }
 
         private void TriggerGridObjectChanged() => Grid.TriggerGridObjectChanged(x, y);

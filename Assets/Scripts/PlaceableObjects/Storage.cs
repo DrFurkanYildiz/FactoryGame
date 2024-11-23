@@ -15,8 +15,8 @@ public class Storage : PlaceableObjectBase, IItemCarrier
 
     private int _inputItemCount;
 
-    [field:SerializeField] public List<Vector2Int> OutputCoordinates { get; set; }
-    [field:SerializeField]public List<Vector2Int> InputCoordinates { get; set; }
+    public List<Vector2Int> OutputCoordinates { get; set; } = new();
+    public List<Vector2Int> InputCoordinates { get; set; } = new();
     
     
     
@@ -47,6 +47,11 @@ public class Storage : PlaceableObjectBase, IItemCarrier
 
     private void Update()
     {
+        ItemTransport();
+    }
+
+    public void ItemTransport()
+    {
         if (_inputItem != null)
         {
             // İtemi hedef konuma doğru hareket ettir
@@ -58,33 +63,34 @@ public class Storage : PlaceableObjectBase, IItemCarrier
             _inputItem = null;
         }
 
+        
+        if (Grid.GetGridObject(OutputCoordinates[0])?.OwnedObjectBase is not IItemCarrier sendingCarrier ||
+            !sendingCarrier.InputCoordinates.Contains(_outputCoordinate))
+            return;
+        
         if (_outputItem == null)
-        {
             _outputItem = Item.CreateItem(_outputWorldPosition, _itemSo);
-        }
         else
         {
-            if (Grid.GetGridObject(OutputCoordinates[0]).OwnedObjectBase is not IItemCarrier sendingCarrier ||
-                !sendingCarrier.InputCoordinates.Contains(_outputCoordinate))
-                return;
-            
             if (sendingCarrier.TrySetWorldItem(_outputItem))
-            {
                 _outputItem = null;
-            }
         }
-        
     }
 
     public bool TrySetWorldItem(Item item)
     {
         if (_inputItem != null) return false;
         _inputItem = item;
+        item.SetCarrier(this);
         return true;
     }
 
     public Dir GetDirectionAccordingOurCoordinate(Vector2Int currentCoordinate)
     {
         return Dir;
+    }
+    public float ItemCarrySpeed()
+    {
+        return 0.01f;
     }
 }

@@ -15,8 +15,8 @@ public class Machine : PlaceableObjectBase, IItemCarrier
     private List<ItemRecipeSo.RecipeItem> _recipeInputs;
     private List<ItemRecipeSo.RecipeItem> _recipeOutputs;
     
-    private readonly List<ItemStack> _inputItemStacks = new();
-    private readonly List<ItemStack> _outputItemStacks = new();
+    [field: SerializeField] private List<ItemStack> _inputItemStacks = new();
+    [field: SerializeField] private List<ItemStack> _outputItemStacks = new();
 
     [Serializable]
     private class ItemStack
@@ -51,7 +51,6 @@ public class Machine : PlaceableObjectBase, IItemCarrier
 
     private void Update()
     {
-
         if (HasEnoughItemsToCraft())
         {
             _craftingProgress += Time.deltaTime;
@@ -65,7 +64,7 @@ public class Machine : PlaceableObjectBase, IItemCarrier
             }
         }
 
-        OutputAction();
+        ItemTransport();
 
     }
 
@@ -90,6 +89,35 @@ public class Machine : PlaceableObjectBase, IItemCarrier
         }
     }
 
+    public void ItemTransport()
+    {
+        foreach (var nextCoordinate in OutputCoordinates)
+        {
+            foreach (var itemStack in _outputItemStacks)
+            {
+                if (itemStack.count <= 0) continue;
+                var outputGate = nextCoordinate + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1;
+                if (itemStack.coordinate != outputGate) continue;
+
+                if (Grid.GetGridObject(nextCoordinate).OwnedObjectBase is not IItemCarrier sendingCarrier ||
+                    !sendingCarrier.InputCoordinates.Contains(outputGate))
+                    continue;
+                
+                if (itemStack.item == null)
+                {
+                    var position = Grid.GetWorldPosition(outputGate) + Grid.GetCellSizeOffset();
+                    itemStack.item = Item.CreateItem(position, itemStack.itemSo);
+                    itemStack.count--;
+                }
+                else
+                {
+                    if (sendingCarrier.TrySetWorldItem(itemStack.item))
+                        itemStack.item = null;
+                }
+            }
+        }
+    }
+
     public bool TrySetWorldItem(Item item)
     {
         if (_inputItemStacks.All(s => s.itemSo != item.ItemSo || s.count >= InputItemMaxStackAmount))
@@ -101,7 +129,8 @@ public class Machine : PlaceableObjectBase, IItemCarrier
                 itemStack.count++;
                 item.DestroySelf();
             }
-
+        
+        item.SetCarrier(this);
         return true;
     }
 
@@ -109,38 +138,13 @@ public class Machine : PlaceableObjectBase, IItemCarrier
     {
         return Dir;
     }
+    public float ItemCarrySpeed()
+    {
+        return 0.01f;
+    }
 
     private bool HasEnoughItemsToCraft()
     {
         return _recipeInputs.TrueForAll(r => _inputItemStacks.Find(s => s.itemSo == r.item).count >= r.amount);
-    }
-
-    private void OutputAction()
-    {
-        foreach (var nextCoordinate in OutputCoordinates)
-        {
-            var outputGate = nextCoordinate + PlaceableObjectBaseSo.GetDirForwardVector(Dir) * -1;
-            if (Grid.GetGridObject(nextCoordinate).OwnedObjectBase is not IItemCarrier sendingCarrier ||
-                !sendingCarrier.InputCoordinates.Contains(outputGate))
-                continue;
-
-            foreach (var itemStack in _outputItemStacks)
-            {
-                if (itemStack.coordinate == outputGate)
-                {
-                    if (itemStack.item == null && itemStack.count > 0)
-                    {
-                        var position = Grid.GetWorldPosition(outputGate) + Grid.GetCellSizeOffset();
-                        itemStack.item = Item.CreateItem(position, itemStack.itemSo);
-                        itemStack.count--;
-                    }
-                    
-                    if (itemStack.item != null && sendingCarrier.TrySetWorldItem(itemStack.item))
-                    {
-                        itemStack.item = null;
-                    }
-                }
-            }
-        }
     }
 }

@@ -9,7 +9,7 @@ using UnityEngine;
 public class GridBuildingSystem : MonoBehaviour
 {
     public static GridBuildingSystem Instance { get; private set; }
-
+    private PathfindingSystem<Tile> _pathfindingSystem;
     private Grid<Tile> _grid;
     private PlaceableObjectBaseSo _placeableObjectSo;
     [SerializeField] private Dir _dir;
@@ -18,7 +18,7 @@ public class GridBuildingSystem : MonoBehaviour
     //public bool isDemolishActive;
 
     private bool _isFirstConveyorTunnelPlaced;
-    private PlaceableObjectBase _firstPlaceableTunnel;
+    private ConveyorTunnelGate _firstPlaceableTunnelGate;
     private const int MaxTunnelLength = 5;
 
     private ConveyorBeltVisualController.BeltVisualDirection _beltVisualDirection;
@@ -34,7 +34,7 @@ public class GridBuildingSystem : MonoBehaviour
     {
         Instance = this;
         _grid = InitializeGrid(20, 20, 1f);
-
+        _pathfindingSystem = new PathfindingSystem<Tile>(_grid);
         _onSelectedPlacedObject += SelectObject;
     }
 
@@ -130,7 +130,7 @@ public class GridBuildingSystem : MonoBehaviour
 
         void UpdateBeltVisual(IReadOnlyList<IItemCarrier> carriers, int i)
         {
-            var dir = belt.GetVisualDirection(_dir, carriers[i].GetDirectionAccordingOurCoordinate(mouseGridPosition));
+            var dir = ConveyorBeltVisualController.GetVisualDirection(_dir, carriers[i].GetDirectionAccordingOurCoordinate(mouseGridPosition));
             if (dir == belt.direction) return;
 
             belt.SetVisualDirection(dir);
@@ -170,6 +170,7 @@ public class GridBuildingSystem : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha3)) _onSelectedPlacedObject?.Invoke(PlaceableType.Splitter);
         if (Input.GetKeyDown(KeyCode.Alpha4)) _onSelectedPlacedObject?.Invoke(PlaceableType.Merger);
         if (Input.GetKeyDown(KeyCode.Alpha5)) _onSelectedPlacedObject?.Invoke(PlaceableType.Machine);
+        if (Input.GetKeyDown(KeyCode.Alpha6)) _onSelectedPlacedObject?.Invoke(PlaceableType.ConveyorTunnelGate);
 
 
         //TODO: Deselect ve Demolish refaktör edilecek.
@@ -179,7 +180,7 @@ public class GridBuildingSystem : MonoBehaviour
             if (_isFirstConveyorTunnelPlaced)
             {
                 _isFirstConveyorTunnelPlaced = false;
-                _firstPlaceableTunnel.DestroySelf();
+                _firstPlaceableTunnelGate.DestroySelf();
             }
         }
     }
@@ -226,12 +227,12 @@ public class GridBuildingSystem : MonoBehaviour
                         _beltVisualDirection = ConveyorBeltVisualController.BeltVisualDirection.Flat;
                     }
                     
-                    /*
-                    if (currentCarrier is ConveyorTunnel)
+                    
+                    if (currentCarrier is ConveyorTunnelGate)
                     {
                         ConveyorTunnelAssignment(placedObject);
                     }
-                    */
+                    
                     
                     // Eğer koyulan bandın yanında bir taşıyıcıya bağlı olmayan bir bant varsa bize bağlanması için yönünü değiştir.
                     
@@ -243,7 +244,7 @@ public class GridBuildingSystem : MonoBehaviour
                             {
                                 if (neighbourBelt.GetNeighborCarriersThatCanSend().Count == 1)
                                 {
-                                    var dir = neighbourBelt.BeltVisual.GetVisualDirection(neighbourBelt.Dir,
+                                    var dir = ConveyorBeltVisualController.GetVisualDirection(neighbourBelt.Dir,
                                         currentCarrier.GetDirectionAccordingOurCoordinate(currentTile.GetGridPosition));
                                     neighbourBelt.BeltVisual.SetVisualDirection(dir);
                                 }
@@ -297,10 +298,10 @@ public class GridBuildingSystem : MonoBehaviour
                     else
                     {
                         var tCarrier = 
-                            _grid.GetGridObject(nBelt.InputCoordinates[0]).OwnedObjectBase as IItemCarrier ?? nList[0];
+                            _grid.GetGridObject(nBelt.InputCoordinates.First()).OwnedObjectBase as IItemCarrier ?? nList[0];
 
                         var dir =
-                            nBelt.BeltVisual.GetVisualDirection(nBelt.Dir,
+                            ConveyorBeltVisualController.GetVisualDirection(nBelt.Dir,
                                 tCarrier.GetDirectionAccordingOurCoordinate(nTile.GetGridPosition));
                         nBelt.BeltVisual.SetVisualDirection(dir);
                     }
@@ -327,8 +328,11 @@ public class GridBuildingSystem : MonoBehaviour
 
         if (!canBuild)
         {
-            placeableObjectBase = null;
-            return;
+            if (placeableObjectSo.type is not PlaceableType.ConveyorTunnelBelt)
+            {
+                placeableObjectBase = null;
+                return;   
+            }
         }
 
         var rotationOffset = placeableObjectSo.GetRotationOffset(dir);
@@ -339,7 +343,13 @@ public class GridBuildingSystem : MonoBehaviour
             PlaceableObjectBase.Create(grid, placedObjectWorldPosition, placedObjectOrigin, dir, placeableObjectSo);
 
         foreach (var gridPosition in gridPositionList)
-            grid.GetGridObject(gridPosition.x, gridPosition.y).OwnedObjectBase = placeableObjectBase;
+        {
+            if (placeableObjectBase is ConveyorTunnelBelt tunnelBelt)
+                grid.GetGridObject(gridPosition.x, gridPosition.y).OwnedTunnelBelt = tunnelBelt;
+            else
+                grid.GetGridObject(gridPosition.x, gridPosition.y).OwnedObjectBase = placeableObjectBase;
+        }
+            
     }
 
 
@@ -377,30 +387,37 @@ public class GridBuildingSystem : MonoBehaviour
     {
         return Quaternion.Euler(0, PlaceableObjectSo.GetRotationAngle(dir), 0);
     }
-
-    /*
-    private List<Vector3> FindBeltPath(Vector2Int start, Vector2Int end)
-    {
-        var path = PathfindingSystem.FindPath(_grid.GetWorldPosition(start), _grid.GetWorldPosition(end), false);
-        if (path == null) Debug.Log("Path not found!"); //Debug.DrawLine(path[i], path[i + 1], Color.red, 1f);
-        return path;
-    }
-    */
-
+    
     private void ConveyorTunnelAssignment(PlaceableObjectBase placeableObjectBase)
     {
         if (!_isFirstConveyorTunnelPlaced)
         {
             _isFirstConveyorTunnelPlaced = true;
-            _firstPlaceableTunnel = placeableObjectBase;
-            _firstPlaceableTunnel.ConveyorTunnelType = ConveyorTunnelType.Input;
+            _firstPlaceableTunnelGate = placeableObjectBase as ConveyorTunnelGate;
         }
         else
         {
-            (_firstPlaceableTunnel.TunnelPlaceableObjectBase, placeableObjectBase.TunnelPlaceableObjectBase) =
-                (placeableObjectBase, _firstPlaceableTunnel);
-            placeableObjectBase.ConveyorTunnelType = ConveyorTunnelType.Output;
-            _firstPlaceableTunnel = null;
+            var secondTunnel = placeableObjectBase as ConveyorTunnelGate;
+            if (secondTunnel == null) return;
+            //_firstPlaceableTunnelGate.SetConveyorTunnelAssignment(secondTunnel,ConveyorTunnelType.Input);
+            //secondTunnel.SetConveyorTunnelAssignment(_firstPlaceableTunnelGate, ConveyorTunnelType.Output);
+
+
+            var list = _pathfindingSystem.FindPath(_firstPlaceableTunnelGate.Origin, secondTunnel.Origin, false, false);
+            list.RemoveAt(list.Count - 1);
+            var tunnelBelts = new List<ConveyorTunnelBelt>();
+            
+            foreach (var coord in list)
+            {
+                ObjectPlacement(_grid, GameAssets.i.GetPlacedSo(PlaceableType.ConveyorTunnelBelt),
+                    _grid.GetWorldPosition(coord), _firstPlaceableTunnelGate.Dir, out var tunnelBelt);
+                tunnelBelts.Add((ConveyorTunnelBelt)tunnelBelt);
+            }
+            
+            _firstPlaceableTunnelGate.SetTunnelBelt(tunnelBelts, ConveyorTunnelGate.TunnelType.Input);
+            secondTunnel.SetTunnelBelt(tunnelBelts, ConveyorTunnelGate.TunnelType.Output);
+
+            _firstPlaceableTunnelGate = null;
             _isFirstConveyorTunnelPlaced = false;
             DeselectObjectType();
         }
@@ -408,12 +425,12 @@ public class GridBuildingSystem : MonoBehaviour
 
     private bool IsSecondTunnelValid(Vector2Int placedObjectOrigin)
     {
-        var deltaX = placedObjectOrigin.x - _firstPlaceableTunnel.Origin.x;
-        var deltaY = placedObjectOrigin.y - _firstPlaceableTunnel.Origin.y;
+        var deltaX = placedObjectOrigin.x - _firstPlaceableTunnelGate.Origin.x;
+        var deltaY = placedObjectOrigin.y - _firstPlaceableTunnelGate.Origin.y;
 
-        return (_firstPlaceableTunnel.Dir == Dir.Down && deltaY is >= -MaxTunnelLength and < 0 && deltaX == 0) ||
-               (_firstPlaceableTunnel.Dir == Dir.Left && deltaX is >= -MaxTunnelLength and < 0 && deltaY == 0) ||
-               (_firstPlaceableTunnel.Dir == Dir.Up && deltaY is <= MaxTunnelLength and > 0 && deltaX == 0) ||
-               (_firstPlaceableTunnel.Dir == Dir.Right && deltaX is <= MaxTunnelLength and > 0 && deltaY == 0);
+        return (_firstPlaceableTunnelGate.Dir == Dir.Down && deltaY is >= -MaxTunnelLength and < 0 && deltaX == 0) ||
+               (_firstPlaceableTunnelGate.Dir == Dir.Left && deltaX is >= -MaxTunnelLength and < 0 && deltaY == 0) ||
+               (_firstPlaceableTunnelGate.Dir == Dir.Up && deltaY is <= MaxTunnelLength and > 0 && deltaX == 0) ||
+               (_firstPlaceableTunnelGate.Dir == Dir.Right && deltaX is <= MaxTunnelLength and > 0 && deltaY == 0);
     }
 }

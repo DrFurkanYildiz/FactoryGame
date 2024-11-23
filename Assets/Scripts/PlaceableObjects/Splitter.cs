@@ -29,6 +29,12 @@ public class Splitter : PlaceableObjectBase, IItemCarrier
 
     private void Update()
     {
+        ItemTransport();
+    }
+
+
+    public void ItemTransport()
+    {
         if (_currentItem == null) return;
 
         var targetPosition = Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();
@@ -56,18 +62,22 @@ public class Splitter : PlaceableObjectBase, IItemCarrier
         }
     }
 
-
     public bool TrySetWorldItem(Item item)
     {
         if (_currentItem != null) 
             return false;
 
         _currentItem = item;
+        item.SetCarrier(this);
         return true;
     }
     
     public Dir GetDirectionAccordingOurCoordinate(Vector2Int coordinate)
     {
         return PlaceableObjectBaseSo.GetDir(Origin, coordinate);
+    }
+    public float ItemCarrySpeed()
+    {
+        return ((PlaceableObjectSo)placeableObjectSo).itemCarrySpeed;
     }
 }

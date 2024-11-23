@@ -2,6 +2,7 @@ using System;
 using DG.Tweening;
 using GridSystem;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class Item : MonoBehaviour
 {
@@ -14,9 +15,15 @@ public class Item : MonoBehaviour
     }
 
     public ItemSo ItemSo { get; private set; }
+    [SerializeField] private GameObject visual;
 
     public void DestroySelf()
     {
         Destroy(gameObject);
+    }
+
+    public void SetCarrier(IItemCarrier carrier)
+    {
+        visual.SetActive(carrier is not ConveyorTunnelBelt);
     }
 }
