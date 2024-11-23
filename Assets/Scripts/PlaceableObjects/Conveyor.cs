@@ -6,7 +6,7 @@ using UnityEngine;
 public abstract class Conveyor : PlaceableObjectBase, IItemCarrier
 {
     private readonly Queue<Item> _items = new();
-    private const int MaxItemCarryCount = 3;
+    protected const int MaxItemCarryCount = 3;
     
     protected List<Vector3> itemCarryList;
     private readonly Dictionary<int, Item> _indexItems = new();
@@ -107,7 +107,7 @@ public abstract class Conveyor : PlaceableObjectBase, IItemCarrier
         return false;
     }
     
-    protected List<Vector3> GetCarryPositions(ConveyorBeltVisualController.BeltVisualDirection vDirection)
+    protected virtual List<Vector3> GetCarryPositions(ConveyorBeltVisualController.BeltVisualDirection vDirection)
     {
         var list = new List<Vector3>();
         var basePosition = Grid.GetWorldPosition(Origin) + Grid.GetCellSizeOffset();

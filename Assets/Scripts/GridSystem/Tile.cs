@@ -24,17 +24,6 @@ namespace GridSystem
                 TriggerGridObjectChanged();
             }
         }
-
-        private ConveyorTunnelBelt _ownedTunnelBelt;
-        public ConveyorTunnelBelt OwnedTunnelBelt
-        {
-            get => _ownedTunnelBelt;
-            set
-            {
-                _ownedTunnelBelt = value;
-                TriggerGridObjectChanged();
-            }
-        }
         
         public Vector2Int GetGridPosition => new (x, y);
 
@@ -46,7 +35,7 @@ namespace GridSystem
         }
 
         public override string ToString() {
-            return x + ", " + y + "\n" + _ownedTunnelBelt;
+            return x + ", " + y + "\n" + _ownedObjectBase;
         }
 
         private void TriggerGridObjectChanged() => Grid.TriggerGridObjectChanged(x, y);

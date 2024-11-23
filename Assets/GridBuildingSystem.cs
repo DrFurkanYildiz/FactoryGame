@@ -311,6 +311,9 @@ public class GridBuildingSystem : MonoBehaviour
                     merger.UpdateInputCarrierCoordinatesCache();
             }
         }
+
+        if (placedObject is ConveyorTunnelGate tunnelGate)
+            tunnelGate.ConnectTunnelGate.DestroySelf();
             
         placedObject.DestroySelf();
     }
@@ -344,9 +347,7 @@ public class GridBuildingSystem : MonoBehaviour
 
         foreach (var gridPosition in gridPositionList)
         {
-            if (placeableObjectBase is ConveyorTunnelBelt tunnelBelt)
-                grid.GetGridObject(gridPosition.x, gridPosition.y).OwnedTunnelBelt = tunnelBelt;
-            else
+            if (placeableObjectBase is not ConveyorTunnelBelt)
                 grid.GetGridObject(gridPosition.x, gridPosition.y).OwnedObjectBase = placeableObjectBase;
         }
             
@@ -410,12 +411,15 @@ public class GridBuildingSystem : MonoBehaviour
             foreach (var coord in list)
             {
                 ObjectPlacement(_grid, GameAssets.i.GetPlacedSo(PlaceableType.ConveyorTunnelBelt),
-                    _grid.GetWorldPosition(coord), _firstPlaceableTunnelGate.Dir, out var tunnelBelt);
-                tunnelBelts.Add((ConveyorTunnelBelt)tunnelBelt);
+                    _grid.GetWorldPosition(coord), _firstPlaceableTunnelGate.Dir, out var placeableObject);
+                var tunnelBelt = placeableObject as ConveyorTunnelBelt;
+                if (tunnelBelt == null) continue;
+                tunnelBelt.FirstGate = _firstPlaceableTunnelGate;
+                tunnelBelts.Add(tunnelBelt);
             }
-            
-            _firstPlaceableTunnelGate.SetTunnelBelt(tunnelBelts, ConveyorTunnelGate.TunnelType.Input);
-            secondTunnel.SetTunnelBelt(tunnelBelts, ConveyorTunnelGate.TunnelType.Output);
+
+            _firstPlaceableTunnelGate.SetTunnelBelt(tunnelBelts, secondTunnel, ConveyorTunnelGate.TunnelType.Input);
+            secondTunnel.SetTunnelBelt(tunnelBelts, _firstPlaceableTunnelGate, ConveyorTunnelGate.TunnelType.Output);
 
             _firstPlaceableTunnelGate = null;
             _isFirstConveyorTunnelPlaced = false;
